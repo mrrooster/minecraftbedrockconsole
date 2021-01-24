@@ -11,7 +11,7 @@ To use it, install it and point it at your minecraft server.
 
 Also, create a folder for backups, and tell it about that too.
 
-**IMPORTANT:** There is no guarantee offered with this software. Make sure you have full backups before using it. There is no warrenty AT ALL.
+**IMPORTANT:** There is no guarantee offered with this software. Make sure you have full backups before using it. There is no warranty AT ALL.
 
 ## Features
 
