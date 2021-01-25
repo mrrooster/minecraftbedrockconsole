@@ -11,11 +11,13 @@ CONFIG += c++11
 INCLUDEPATH += src
 
 SOURCES += \
+    src/backup/backupmanager.cpp \
     src/server/bedrockserver.cpp \
     src/main.cpp \
     src/mainwindow.cpp
 
 HEADERS += \
+    src/backup/backupmanager.h \
     src/server/bedrockserver.h \
     src/mainwindow.h
 

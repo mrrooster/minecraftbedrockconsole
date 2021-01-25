@@ -18,73 +18,44 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow), promptToSaveNextBackup(false), shuttingDown(false)
+    , ui(new Ui::MainWindow), shuttingDown(false)
 {
     ui->setupUi(this);
     setWindowTitle(tr("Bedrock server console"));
 
     this->server = new BedrockServer(this);
+    this->backups = new BackupManager(this->server, this);
 
     connect(this->server,&BedrockServer::serverOutput,this,&MainWindow::handleServerOutput);
     connect(this->server,&BedrockServer::serverStateChanged,this,&MainWindow::handleServerStateChange);
 
-    connect(this->server,&BedrockServer::backupFinished,this,[=](QString zipFile) {
-        if (this->promptToSaveNextBackup) {
-            this->promptToSaveNextBackup=false;
-            QString destination = QFileDialog::getSaveFileName(this,"Save backup to...","backup.zip","*.zip");
-            if (destination!="") {
-                if (QFile::exists(destination)) {
-                    QFile::remove(destination);
-                }
-                QFile::copy(zipFile,destination);
-            }
-        } else {
-            QSettings settings;
-            QString backupFolder = settings.value("backup/autoBackupFolder","").toString();
-            if (backupFolder!="" && QDir().exists(backupFolder)) {
-                QString destination = backupFolder + "/server_backup_" + QDateTime::currentDateTimeUtc().toString("yyyyMMdd_hhmmss")+".zip";
-                QFile::copy(zipFile,destination);
-            } else {
-                handleServerOutput(BedrockServer::ErrorOutput,"The backup folder can not be found. Automatic backup failed.");
-            }
-            setBackupTimerActiveState(settings.value("backup/doRegularBackups",false).toBool());
+    connect(this->backups,&BackupManager::backupFailed,this,[=](BackupManager::FailReason reason) {
+        if (reason==BackupManager::BackupFolderNotFound) {
+            handleServerOutput(BedrockServer::ErrorOutput,QString(tr("The backup folder can not be found. Automatic backup failed.")));
         }
-        this->server->completeBackup(); // Always call this when you have a 'backupFinished' to delete temp files.
+        this->ui->instantBackup->setEnabled(true);
     });
-
-    connect(this->server,&BedrockServer::backupStarting,this,[=](){
+    connect(this->backups,&BackupManager::backupTimerChanged,this,&MainWindow::setupBackupTimerLabel);
+    connect(this->backups,&BackupManager::backupSavedToFile,this,[=](QString file){
+        handleServerOutput(BedrockServer::InfoOutput,QString(tr("Backup saved to: %1")).arg(file));
+        this->ui->instantBackup->setEnabled(true);
+    });
+    connect(this->backups,&BackupManager::backupFileDeleted,this,[=](QString file){
+        handleServerOutput(BedrockServer::InfoOutput,QString(tr("Backup deleted: %1")).arg(file));
+    });
+    connect(this->backups,&BackupManager::backupStarting,this,[=](){
         this->ui->instantBackup->setDisabled(true);
-        if (!this->promptToSaveNextBackup && !QSettings().value("backup/alwaysBackupOnTime",false).toBool()) {
-            /// Ad hoc backups don't reset the timer.
-            setBackupTimerActiveState(false);
-        }
     });
-    connect(this->server,&BedrockServer::backupFailed,this,[=](){this->ui->instantBackup->setDisabled(false);});
-    connect(this->server,&BedrockServer::backupComplete,this,[=](){this->ui->instantBackup->setDisabled(false);});
-
-    connect(this->server,&BedrockServer::playerConnected,this,[=](QString, QString ) {
-        if (QSettings().value("backup/backupOnJoin",false).toBool()) {
-            this->server->scheduleBackup();
-        }
-    });
-    connect(this->server,&BedrockServer::playerDisconnected,this,[=](QString, QString ) {
-        if (QSettings().value("backup/backupOnLeave",false).toBool()) {
-            this->server->scheduleBackup();
-        }
-    });
-
-    // Timer
-    this->backupTimer.setSingleShot(false);
-    connect(&(this->backupTimer),&QTimer::timeout,this,[=]() {
-        if (QSettings().value("backup/doRegularBackups",false).toBool()) {
-            this->server->scheduleBackup();
+    connect(this->backups,&BackupManager::storageFolderItemsChanged,this,[=]() {
+        if (this->ui->tabWidget->currentIndex()==1) {
+            this->setupBackupStorageUsedLabel();
         }
     });
 
     setupUi();
 
     this->handleServerStateChange(this->server->GetCurrentState());
-    if (!autoBackupLocationValid()) {
+    if (!this->backups->backupStorageFolderValid()) {
         handleServerOutput(BedrockServer::ErrorOutput,"The backup folder is not set correctly. Automatic backups will not work.");
     }
 
@@ -168,7 +139,7 @@ void MainWindow::setOptions()
     this->ui->backupFolder->setText(settings.value("autoBackupFolder","").toString());
     this->ui->backupOnJoin->setChecked(settings.value("backupOnJoin").toBool());
     this->ui->backupOnLeave->setChecked(settings.value("backupOnLeave").toBool());
-    this->ui->invalidBackupLocationLabel->setHidden(autoBackupLocationValid());
+    this->ui->invalidBackupLocationLabel->setHidden(this->backups->backupStorageFolderValid());
 
     int value = settings.value("backupDelayMinutes",30).toInt();
     this->ui->backupDelaySlider->setValue(value);
@@ -176,31 +147,46 @@ void MainWindow::setOptions()
     this->server->setBackupDelaySeconds(value * 60);
 
     value = settings.value("backupFrequencyHours",3).toInt();
-    setBackupTimerInterval(value * 1000 * 60 * 60);
     this->ui->backupFrequencySlider->setValue(value);
     setBackupFrequencyLabel(value);
 
     bool doRegularBackups = settings.value("doRegularBackups",false).toBool();
-    this->ui->doRegularBackups->setChecked(doRegularBackups);
     this->ui->alwaysBackupOnTime->setChecked(settings.value("alwaysBackupOnTime",false).toBool());
-    setBackupTimerActiveState(doRegularBackups);
+    this->ui->doRegularBackups->setChecked(doRegularBackups);
     this->ui->backupFrequencyLabel->setEnabled(doRegularBackups);
     this->ui->backupFrequencySlider->setEnabled(doRegularBackups);
     this->ui->alwaysBackupOnTime->setEnabled(doRegularBackups);
+    this->ui->restrictBackupsStorageUsage->setChecked(this->backups->getStorageFolderSizeIsLimited());
+    this->ui->storageUsage->setMinimumHeight(this->ui->storageUsedBar->height());
+    this->ui->storageUsedBar->setVisible(this->backups->getStorageFolderSizeIsLimited());
+    this->ui->maxStorageUsageMiB->setEnabled(this->backups->getStorageFolderSizeIsLimited());
+    this->ui->maxStorageUsageMiB->setText(QString::number(this->backups->getMaximumStorageFolderSize()));
+    this->ui->storageUsage->setHidden(this->backups->getStorageFolderSizeIsLimited());
+
+    this->ui->restrictBackupAge->setChecked(this->backups->getStorageFolderAgeLimited());
+    this->ui->restrictBackupAgeSlider->setEnabled(this->backups->getStorageFolderAgeLimited());
+    this->ui->restrictBackupAgeSlider->setValue(this->backups->getMaximumStorageFolderItemAgeInDays()); // Causes slider to redraw if saved val == val in .ui file
+
+    this->ui->restrictNumberOfBackups->setChecked(this->backups->getStorageFolderItemCountLimited());
+    this->ui->restrictNumberOfBackupsAmount->setEnabled(this->backups->getStorageFolderItemCountLimited());
+    this->ui->restrictNumberOfBackupsAmount->setText(QString::number(this->backups->getMaximumStorageFolderItemCount()));
+
     settings.endGroup();
 }
 
 void MainWindow::setupUi()
 {
     this->ui->serverOutput->setMaximumBlockCount(20000);
+    this->ui->commandEdit->setPlaceholderText(tr("Server command..."));
 
     connect(ui->startServer,&QPushButton::clicked,this->server,&BedrockServer::startServer);
     connect(ui->stopServer,&QPushButton::clicked,this->server,&BedrockServer::stopServer);
+
     connect(ui->instantBackup,&QPushButton::clicked,this,[=](){
-        this->promptToSaveNextBackup=true;
-        this->server->startBackup();
+        QString destination = QFileDialog::getSaveFileName(this,"Save backup to...","backup.zip","*.zip");
+        this->backups->backupToFile(destination);
     });
-    connect(ui->scheduleBackup,&QPushButton::clicked,this->server,&BedrockServer::scheduleBackup);
+    connect(ui->scheduleBackup,&QPushButton::clicked,this->backups,&BackupManager::scheduleBackup);
 
     connect(ui->sendButton,&QPushButton::clicked,this,[=]() {
         this->server->sendCommandToServer(this->ui->commandEdit->text());
@@ -222,8 +208,8 @@ void MainWindow::setupUi()
     });
     connect(this->ui->selectBackupFolder,&QPushButton::clicked,this,[=]() {this->ui->backupFolder->setText(QFileDialog::getExistingDirectory(this,tr("Select folder for automatic backups"),"",QFileDialog::ShowDirsOnly));});
     connect(this->ui->backupFolder,&QLineEdit::textChanged,this,[=](QString text) {
-        if (QDir(text).exists()) {QSettings().setValue("backup/autoBackupFolder",text);}
-        this->ui->invalidBackupLocationLabel->setHidden(autoBackupLocationValid());
+        this->backups->setBackupStorageFolder(text);
+        this->ui->invalidBackupLocationLabel->setHidden(this->backups->backupStorageFolderValid());
     });
     connect(this->ui->backupOnJoin,&QCheckBox::stateChanged,this,[=](bool state) { QSettings().setValue("backup/backupOnJoin",state);});
     connect(this->ui->backupOnLeave,&QCheckBox::stateChanged,this,[=](bool state) { QSettings().setValue("backup/backupOnLeave",state);});
@@ -234,16 +220,39 @@ void MainWindow::setupUi()
     });
     connect(this->ui->backupFrequencySlider,&QSlider::valueChanged,this,[=](int value) {
         setBackupFrequencyLabel(value);
-        QSettings().setValue("backup/backupFrequencyHours",value);
-        setBackupTimerInterval(value * 1000 * 60 * 60); // Interval is in hourLs
+        this->backups->setBackupFrequency(value);
     });
-    connect(this->ui->doRegularBackups,&QCheckBox::stateChanged,this,[=](bool state) {
-        QSettings().setValue("backup/doRegularBackups",state);
-        this->setBackupTimerActiveState(state);
+    connect(this->ui->doRegularBackups,&QCheckBox::stateChanged,this->backups,&BackupManager::setEnableTimedBackups);
+    connect(this->ui->alwaysBackupOnTime,&QCheckBox::stateChanged,this->backups,&BackupManager::setBackupTimerIgnoresOtherEvents);
+    connect(this->ui->tabWidget,&QTabWidget::currentChanged,this,[=](int idx) {
+       if (idx==1) { // Options page
+           this->setupBackupStorageUsedLabel();
+       }
     });
-    connect(this->ui->alwaysBackupOnTime,&QCheckBox::stateChanged,this,[=](bool state) { QSettings().setValue("backup/alwaysBackupOnTime",state);});
+    connect(this->ui->restrictBackupsStorageUsage,&QCheckBox::stateChanged,this,[=](bool state) {
+        this->backups->setLimitStorageFolderSize(state);
+        setupBackupStorageUsedLabel();
+    });
+    connect(this->ui->maxStorageUsageMiB,&QLineEdit::textChanged,this,[=](QString text) {
+       qsizetype newSize = text.toLongLong();
+       this->backups->setMaximumStorageFolderSize(newSize);
+       this->setupBackupStorageUsedLabel();
+    });
+
+    connect(this->ui->restrictNumberOfBackups,&QCheckBox::stateChanged,this->backups,&BackupManager::setLimitStorageFolderItemCount);
+    connect(this->ui->restrictNumberOfBackupsAmount,&QLineEdit::textChanged,this,[=](QString value) {
+        this->backups->setMaximumStorageFolderItemCount(value.toInt());
+    });
+
+    connect(this->ui->restrictBackupAge,&QCheckBox::stateChanged,this->backups,&BackupManager::setLimitStorageFolderItemAge);
+    connect(this->ui->restrictBackupAgeSlider,&QSlider::valueChanged,this,[=](int value) {
+        this->backups->setMaximumStorageFolderItemAgeInDays(value);
+        this->ui->restrictBackupAge->setText(QString(tr("Delete backups older than %Ln day(s)","backup_age",value)));
+    });
+
 
     setOptions();
+    this->ui->restrictBackupAge->setText(QString(tr("Delete backups older than %Ln day(s)","backup_age",this->ui->restrictBackupAgeSlider->value())));
 //    connect(this->ui->tabWidget,&QTabWidget::currentChanged,this,[=](int idx) { if (idx==1) {setOptions();}});
     this->ui->tabWidget->setCurrentIndex( serverLocationValid() ? 0 : 1 );
 }
@@ -261,33 +270,6 @@ bool MainWindow::serverLocationValid()
     return (serverRoot!="" && serverRootDir.exists() && serverRootDir.exists("bedrock_server.exe"));
 }
 
-bool MainWindow::autoBackupLocationValid()
-{
-    QString backupFolder = QSettings().value("backup/autoBackupFolder","").toString();
-    return (backupFolder!="" && QDir().exists(backupFolder));
-}
-
-void MainWindow::setBackupTimerActiveState(bool active)
-{
-    if (active) {
-        if (!this->backupTimer.isActive()) {
-            this->backupTimer.start();
-        }
-    } else {
-        this->backupTimer.stop();
-    }
-    setupBackupTimerLabel();
-}
-
-void MainWindow::setBackupTimerInterval(quint64 msec)
-{
-    if (msec < 60000) {
-        msec = 60000; // Don't backup more frequently than a minute.
-    }
-    this->backupTimer.setInterval(msec);
-    setupBackupTimerLabel();
-}
-
 void MainWindow::setBackupDelayLabel(int delay)
 {
     this->ui->backupDelayLabel->setText(QString(tr("Wait at least %Ln minute(s) between backups","backup delay",delay)));
@@ -300,12 +282,31 @@ void MainWindow::setBackupFrequencyLabel(int delayHours)
 
 void MainWindow::setupBackupTimerLabel()
 {
-    if (this->backupTimer.isActive()) {
+    QDateTime nextBackup = this->backups->getNextBackupTime();
+    if (nextBackup.isValid()) {
         this->ui->nextBackupLabel->setText(QString(tr("Next scheduled backup: %1"))
-                                           .arg(QDateTime::currentDateTime().addMSecs(this->backupTimer.remainingTime()).toString())
+                                           .arg(nextBackup.toString())
                                            );
     } else {
         this->ui->nextBackupLabel->setText("");
+    }
+}
+
+void MainWindow::setupBackupStorageUsedLabel()
+{
+    this->ui->storageUsage->setText(QString(tr("%1 used","backup_data_size")).arg(QLocale().formattedDataSize(this->backups->getBackupStorageFolderSize())));
+    qsizetype val = this->backups->getBackupStorageFolderSize()/1024/1024; // mib
+    qsizetype max = this->backups->getMaximumStorageFolderSize(); // returnbs mib.
+    this->ui->storageUsedBar->setMaximum(max<val ? val : max);
+    this->ui->storageUsedBar->setValue(val);
+    if (!this->backups->getStorageFolderSizeIsLimited()) {
+        // Hide the progress bar
+        if (this->ui->storageUsedBar->isVisible()) {
+            this->ui->storageUsage->setMinimumHeight(this->ui->storageUsedBar->height());
+        }
+        this->ui->storageUsedBar->setVisible(false);
+    } else {
+        this->ui->storageUsedBar->setVisible(true);
     }
 }
 

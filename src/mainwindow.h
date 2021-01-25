@@ -15,6 +15,7 @@
 */
 #include <QMainWindow>
 #include <server/bedrockserver.h>
+#include <backup/backupmanager.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -34,23 +35,22 @@ protected:
 private:
     Ui::MainWindow *ui;
     BedrockServer *server;
-    bool promptToSaveNextBackup; // if true, next backup pops up a save dialog.
+    BackupManager *backups;
     bool shuttingDown;
-    QTimer backupTimer;
 
     void setOptions();
     void setupUi();
     QString getServerRootFolder();
     bool serverLocationValid();
-    bool autoBackupLocationValid();
     void setBackupTimerActiveState(bool active);
     void setBackupTimerInterval(quint64 msec);
     void setBackupDelayLabel(int delay);
     void setBackupFrequencyLabel(int delayHours);
-    void setupBackupTimerLabel();
 
 private slots:
     void handleServerOutput(BedrockServer::OutputType type, QString message);
     void handleServerStateChange(BedrockServer::ServerState newState);
+    void setupBackupTimerLabel();
+    void setupBackupStorageUsedLabel();
 };
 #endif // MAINWINDOW_H
