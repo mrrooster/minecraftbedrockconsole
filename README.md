@@ -37,7 +37,7 @@ You can also set limits on the amount of disk space used by backups, and other o
 
 ## Backup triggers
 
-![The backup triggers window](doc/img/main_backups.png)
+![The backup triggers window](doc/img/main_backup.png)
 
 Here you define what triggers a backup. 
 
