@@ -14,15 +14,23 @@ SOURCES += \
     src/backup/backupmanager.cpp \
     src/server/bedrockserver.cpp \
     src/main.cpp \
-    src/mainwindow.cpp
+    src/mainwindow.cpp \
+    src/server/bedrockservermodel.cpp \
+    src/widgets/playerinfowidget.cpp \
+    src/widgets/serverconsolewidget.cpp
 
 HEADERS += \
     src/backup/backupmanager.h \
     src/server/bedrockserver.h \
-    src/mainwindow.h
+    src/mainwindow.h \
+    src/server/bedrockservermodel.h \
+    src/widgets/playerinfowidget.h \
+    src/widgets/serverconsolewidget.h
 
 FORMS += \
-    src/mainwindow.ui
+    src/mainwindow.ui \
+    src/widgets/playerinfowidget.ui \
+    src/widgets/serverconsolewidget.ui
 
 TRANSLATIONS += \
     lang/mcbc_en.ts \

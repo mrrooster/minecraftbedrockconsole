@@ -17,6 +17,10 @@
 #include <QProcess>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QAbstractItemModel>
+#include <QStandardItemModel>
+
+class BedrockServerModel;
 
 class BedrockServer : public QObject
 {
@@ -26,13 +30,20 @@ public:
 
     enum OutputType { ServerInfoOutput,ServerErrorOutput,ServerStatus,InfoOutput,ErrorOutput };
     enum ServerState { ServerLoading,ServerStartup,ServerRunning,ServerNotRunning,ServerStopped,ServerShutdown,ServerRestarting };
+    enum ServerDifficulty { Peacefull,Easy,Normal,Hard };
+    enum PermissionLevel { Member,Operator,Visitor };
 
     QString GetCurrentStateName();
     ServerState GetCurrentState();
     QString stateName(ServerState state);
     void setServerRootFolder(QString folder);
     void setBackupDelaySeconds(int seconds);
-
+    QAbstractItemModel *getServerModel();
+    QString getXuidFromIndex(QModelIndex index);
+    QString getPlayerNameFromXuid(QString xuid);
+    bool isOnline(QString xuid);
+    int getPermissionLevel(QString xuid);
+    void setPermissionLevelForUser(QString xuid, PermissionLevel level);
 signals:
     void serverStateChanged(ServerState newState);
 
@@ -49,6 +60,10 @@ signals:
     void playerConnected(QString name, QString xuid);
     void playerDisconnected(QString name, QString xuid);
 
+    void serverDifficulty(ServerDifficulty difficulty);
+    void serverPermissionList(QStringList ops, QStringList members, QStringList visitors);
+    void serverPermissionsChanged(); // Connect to this if you care about permission changes.
+
 public slots:
     void scheduleBackup(); // Starts a backup unless one has run too recently, if so, schedules it instead.
     void startBackup(); // You must call completeBackup if you get a backupFinished. (Once you've done with the zip)
@@ -56,14 +71,20 @@ public slots:
     void startServer();
     void stopServer();
     void sendCommandToServer(QString command);
+    void setDifficulty(int difficulty);
 //    void StopServer();
 
 private:
+    BedrockServerModel *model;
+    QStandardItem *onlinePlayers;
+    QStandardItem *operators;
+    ServerDifficulty difficulty;
+    QStringList responseBuffer;
+
     QString serverRootFolder;
     QProcess *serverProcess;
     QByteArray processOutputBuffer;
     QTemporaryDir *tempDir;
-    QMap<QString,QString> knownPlayers;
     ServerState state;
     QTimer backupDelayTimer; // if running
     int backupDelaySeconds; // Automated or triggered backups will wait at least this seconds between firing.
@@ -79,6 +100,7 @@ private:
     QPair<QString,QString> parsePlayerString(QString playerString);
     void setState(ServerState newState);
     bool serverRootIsValid();
+    void processResponseBuffer();
 
 private slots:
     void handleServerOutput();

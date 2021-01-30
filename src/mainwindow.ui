@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>736</width>
-    <height>485</height>
+    <width>659</width>
+    <height>445</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -47,6 +47,32 @@
        </widget>
       </item>
       <item>
+       <widget class="QSlider" name="difficultySlider">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="maximum">
+         <number>3</number>
+        </property>
+        <property name="pageStep">
+         <number>1</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="difficultyLabel">
+        <property name="text">
+         <string>TextLabel</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer_2">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -78,23 +104,13 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
-        <string>Server</string>
+        <string comment="tab text">Console</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_2">
-        <item>
-         <widget class="QPlainTextEdit" name="serverOutput">
-          <property name="focusPolicy">
-           <enum>Qt::WheelFocus</enum>
-          </property>
-          <property name="readOnly">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
@@ -113,7 +129,7 @@
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This will request a backup be taken.&lt;/p&gt;&lt;p&gt;The backup will be saved into the configured backups folder.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
-             <string>Request an automatic backup</string>
+             <string>Backup to backup folder</string>
             </property>
            </widget>
           </item>
@@ -140,30 +156,33 @@
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
-          <item>
-           <widget class="QLineEdit" name="commandEdit"/>
-          </item>
-          <item>
-           <widget class="QPushButton" name="sendButton">
-            <property name="text">
-             <string>Send</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
+         <widget class="ServerConsoleWidget" name="serverConsole" native="true"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_3">
+       <attribute name="title">
+        <string comment="tab text">Users</string>
+       </attribute>
+       <layout class="QHBoxLayout" name="playerListLayout">
+        <item>
+         <widget class="QTreeView" name="playerList">
+          <property name="headerHidden">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
-        <string>Options</string>
+        <string comment="tab text">Options</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
          <widget class="QLabel" name="invalidServerLocationLabel">
           <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600; color:#ff0000;&quot;&gt;You must set the server locaton.&lt;/span&gt;&lt;br/&gt;This should be the root of your minecraft server.&lt;/p&gt;&lt;p&gt;You can download the server &lt;a href=&quot;https://www.minecraft.net/en-us/download/server/bedrock/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;from here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600; color:#ff0000;&quot;&gt;You must set the server locaton.&lt;/span&gt;&lt;br/&gt;This should be the root of your minecraft server, you can download the server &lt;a href=&quot;https://www.minecraft.net/en-us/download/server/bedrock/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#007af4;&quot;&gt;from here.&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="textFormat">
            <enum>Qt::RichText</enum>
@@ -234,7 +253,7 @@
         <item>
          <widget class="QGroupBox" name="groupBox_2">
           <property name="title">
-           <string>Storage</string>
+           <string>Backup storage</string>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_5">
            <item>
@@ -315,40 +334,6 @@
                </property>
               </spacer>
              </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_11">
-             <item>
-              <widget class="QCheckBox" name="restrictBackupAge">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="text">
-                <string>Delete backups older than %Ln day(s)</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QSlider" name="restrictBackupAgeSlider">
-               <property name="minimum">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <number>365</number>
-               </property>
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_10">
              <item>
               <widget class="QCheckBox" name="restrictNumberOfBackups">
                <property name="text">
@@ -386,7 +371,7 @@
               </widget>
              </item>
              <item>
-              <spacer name="horizontalSpacer_4">
+              <spacer name="horizontalSpacer_5">
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
                </property>
@@ -400,13 +385,70 @@
              </item>
             </layout>
            </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_11">
+             <item>
+              <widget class="QCheckBox" name="restrictBackupAge">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Delete backups older than %Ln day(s)</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSlider" name="restrictBackupAgeSlider">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>365</number>
+               </property>
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
           </layout>
          </widget>
         </item>
         <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="copyright">
+          <property name="text">
+           <string>TextLabel</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_4">
+       <attribute name="title">
+        <string comment="tab text">Backup triggers</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <item>
          <widget class="QGroupBox" name="groupBox">
           <property name="title">
-           <string>Backup triggers</string>
+           <string>Schedule</string>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
@@ -456,28 +498,17 @@
              </property>
             </widget>
            </item>
-           <item>
-            <spacer name="verticalSpacer_3">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupBox_3">
+          <property name="title">
+           <string>Events</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_7">
            <item>
             <layout class="QGridLayout" name="gridLayout">
-             <item row="0" column="1">
-              <widget class="QCheckBox" name="backupOnLeave">
-               <property name="text">
-                <string>Schedule a backup when a player leaves</string>
-               </property>
-              </widget>
-             </item>
              <item row="0" column="0">
               <widget class="QCheckBox" name="backupOnJoin">
                <property name="text">
@@ -485,46 +516,10 @@
                </property>
               </widget>
              </item>
-            </layout>
-           </item>
-           <item>
-            <spacer name="verticalSpacer_2">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_6">
-             <item>
-              <widget class="QLabel" name="backupDelayLabel">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
+             <item row="1" column="0">
+              <widget class="QCheckBox" name="backupOnLeave">
                <property name="text">
-                <string>Wait at least xxxxx minutes betweent backups</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QSlider" name="backupDelaySlider">
-               <property name="minimum">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <number>240</number>
-               </property>
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
+                <string>Schedule a backup when a player leaves</string>
                </property>
               </widget>
              </item>
@@ -534,7 +529,37 @@
          </widget>
         </item>
         <item>
-         <spacer name="verticalSpacer">
+         <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <widget class="QLabel" name="backupDelayLabel">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Wait at least xxxxx minutes betweent backups</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="backupDelaySlider">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>240</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <spacer name="verticalSpacer_4">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
           </property>
@@ -557,142 +582,21 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>736</width>
+     <width>659</width>
      <height>20</height>
     </rect>
    </property>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ServerConsoleWidget</class>
+   <extends>QWidget</extends>
+   <header>widgets\serverconsolewidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
- <connections>
-  <connection>
-   <sender>commandEdit</sender>
-   <signal>returnPressed()</signal>
-   <receiver>sendButton</receiver>
-   <slot>click()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>131</x>
-     <y>551</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>502</x>
-     <y>550</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>doRegularBackups</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>backupFrequencySlider</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>164</x>
-     <y>441</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>490</x>
-     <y>439</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>doRegularBackups</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>backupFrequencyLabel</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>141</x>
-     <y>441</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>262</x>
-     <y>441</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>doRegularBackups</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>alwaysBackupOnTime</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>220</x>
-     <y>441</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>299</x>
-     <y>467</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>restrictBackupsStorageUsage</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>maxStorageUsageMiB</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>154</x>
-     <y>315</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>247</x>
-     <y>317</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>restrictBackupsStorageUsage</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>storageUsage</receiver>
-   <slot>setHidden(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>73</x>
-     <y>313</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>64</x>
-     <y>287</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>restrictBackupAge</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>restrictBackupAgeSlider</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>150</x>
-     <y>333</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>262</x>
-     <y>337</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>restrictNumberOfBackups</sender>
-   <signal>clicked(bool)</signal>
-   <receiver>restrictNumberOfBackupsAmount</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>89</x>
-     <y>362</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>148</x>
-     <y>364</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

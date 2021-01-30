@@ -11,8 +11,13 @@
  **
 */
 #include "bedrockserver.h"
+#include "bedrockservermodel.h"
+#include <QFileIconProvider>
 #include <QTimer>
 #include <QTemporaryDir>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 #include <QDebug>
 
@@ -47,6 +52,9 @@ BedrockServer::BedrockServer(QObject *parent) : QObject(parent),tempDir(nullptr)
     });
 
     connect(this,&QObject::destroyed,this->serverProcess,&QProcess::kill);
+
+    this->model = new BedrockServerModel(this);
+    connect(this->model,&BedrockServerModel::serverPermissionsChanged,this,&BedrockServer::serverPermissionsChanged);
 }
 
 QString BedrockServer::GetCurrentStateName()
@@ -99,11 +107,18 @@ void BedrockServer::stopServer()
     }
 }
 
-
-
 void BedrockServer::sendCommandToServer(QString command)
 {
     this->serverProcess->write(QString(command+"\n").toLocal8Bit());
+}
+
+void BedrockServer::setDifficulty(int difficulty)
+{
+    if (difficulty>=0 && difficulty<=3 && this->difficulty!=(ServerDifficulty)difficulty) {
+        sendCommandToServer(QString("difficulty %1").arg(QString::number(difficulty)));
+        this->difficulty = (ServerDifficulty)difficulty;
+        emit this->serverDifficulty(this->difficulty);
+    }
 }
 
 QString BedrockServer::readServerLine()
@@ -225,12 +240,9 @@ void BedrockServer::processFinishedBackup()
 
 void BedrockServer::parseOutputForEvents(QString output)
 {
-    qDebug()<<"Got output:"<<output;
-
-    if (output.startsWith("[INFO] ")) {
-        output = output.mid(7);
+    if (output.contains("INFO] ")) {
+        output = output.mid(output.indexOf("INFO] ")+6);
     }
-    qDebug()<<"Got output:"<<output;
 
     if (output.startsWith("Player connected:")) {
         // Player joined
@@ -238,9 +250,6 @@ void BedrockServer::parseOutputForEvents(QString output)
         QPair<QString,QString> player = parsePlayerString(output.mid(18));
         QString xuid = player.second;
         QString name = player.first;
-        if (!this->knownPlayers.contains(player.second)) {
-            this->knownPlayers.insert(xuid,name);
-        }
         emit this->playerConnected(name,xuid);
     } else if (output.startsWith("Player disconnected: ")) {
         QPair<QString,QString> player = parsePlayerString(output.mid(21));
@@ -248,7 +257,11 @@ void BedrockServer::parseOutputForEvents(QString output)
         QString name = player.first;
         emit this->playerDisconnected(name,xuid);
         qDebug()<<"Player left: "<<parsePlayerString(output.mid(21));
-    } else if (output=="Server started.") {
+    } else if (output.startsWith("De-opped:")) {
+        sendCommandToServer("permission list");
+    } else if (output.startsWith("Opped:")) {
+        sendCommandToServer("permission list");
+    } else if (output.contains("Server started.")) {
         setState(ServerRunning);
     }
 }
@@ -283,6 +296,34 @@ bool BedrockServer::serverRootIsValid()
     return (serverRoot.exists() && serverRoot.exists("bedrock_server.exe"));
 }
 
+void BedrockServer::processResponseBuffer()
+{
+    QJsonDocument doc = QJsonDocument::fromJson(this->responseBuffer.join("").toUtf8());
+
+    if (doc.isObject()) {
+        QString command = doc.object().value("command").toString();
+
+        if (command=="permissions") {
+            QJsonArray permissions = doc.object().value("result").toArray();
+            QStringList ops,members,visitors;
+            for(int x=0;x<permissions.size();x++) {
+                QJsonObject permJson = permissions[x].toObject();
+                QString xuid = permJson.value("xuid").toString();
+                QString perm =  permJson.value("permission").toString();
+                if (perm=="operator") {
+                    ops.append(xuid);
+                } else if (perm=="member") {
+                    members.append(xuid);
+                } else if (perm=="visitor") {
+                    visitors.append(xuid);
+                }
+            }
+            emit this->serverPermissionList(ops,members,visitors);
+        }
+    }
+    this->responseBuffer.clear();
+}
+
 QString BedrockServer::stateName(BedrockServer::ServerState state)
 {
     switch (state) {
@@ -312,6 +353,76 @@ void BedrockServer::setBackupDelaySeconds(int seconds)
     this->backupDelaySeconds = seconds;
     if (this->backupDelayTimer.isActive() && (this->backupDelayTimer.remainingTime()/1000) > this->backupDelaySeconds) {
         this->backupDelayTimer.start(this->backupDelaySeconds*1000);
+    }
+}
+
+QAbstractItemModel *BedrockServer::getServerModel()
+{
+    return this->model;
+}
+
+QString BedrockServer::getXuidFromIndex(QModelIndex index)
+{
+    return this->model->getXuidFromIndex(index);
+}
+
+QString BedrockServer::getPlayerNameFromXuid(QString xuid)
+{
+    return this->model->getPlayerNameFromXuid(xuid);
+}
+
+bool BedrockServer::isOnline(QString xuid)
+{
+    return this->model->isOnline(xuid);
+}
+
+int BedrockServer::getPermissionLevel(QString xuid)
+{
+    return this->model->getPermissionLevel(xuid);
+}
+
+void BedrockServer::setPermissionLevelForUser(QString xuid, BedrockServer::PermissionLevel level)
+{
+    if (level==getPermissionLevel(xuid)) {
+        return;
+    }
+
+    QFile permissionsFile(QString("%1/permissions.json").arg(this->serverRootFolder));
+    if (!permissionsFile.open(QIODevice::ReadOnly)) {
+        return;
+    }
+    QJsonDocument permJson = QJsonDocument::fromJson(permissionsFile.readAll());
+    permissionsFile.close();
+
+    QString permString = level == 0 ? "member" : level == 1 ? "operator" : "Visitor";
+
+    if (permJson.isArray()) {
+        QJsonArray permissions = permJson.array();
+        bool updated = false;
+        for(int x=0;x<permissions.size();x++) {
+            QJsonObject permObj = permissions.at(x).toObject();
+            if (permObj.value("xuid").toString()==xuid) {
+                // Found person in permissions array
+                permObj["permission"]=permString;
+                updated=true;
+            }
+            permissions[x]=permObj;
+        }
+        if (!updated) {
+            QJsonObject newPerm;
+            newPerm.insert("permission",permString);
+            newPerm.insert("xuid",xuid);
+            permissions.append(newPerm);
+        }
+        if (permissionsFile.open(QIODevice::WriteOnly)) {
+            permissionsFile.resize(0);
+            permJson.setArray(permissions);
+            permissionsFile.write(permJson.toJson());
+            permissionsFile.close();
+            qDebug()<< "Saved updated permissions file, sending reload to server";
+            sendCommandToServer("permission reload");
+            sendCommandToServer("permission list");
+        }
     }
 }
 
@@ -352,6 +463,15 @@ void BedrockServer::handleServerOutput()
         } else if (line=="Changes to the level are resumed.") {
             emit this->serverOutput(OutputType::InfoOutput,tr("The server has resumed normal operations."));
             emit backupFinishedOnServer();
+        } else if (line.contains("Difficulty: ") && this->state==ServerStartup) {
+            QString difficulty = line.mid(line.indexOf("Difficulty: ")+12,1);
+            this->difficulty=(ServerDifficulty)difficulty.toInt();
+            emit this->serverDifficulty(this->difficulty);
+        } else if (line.startsWith("###* ")) {
+            this->responseBuffer.clear();
+            this->responseBuffer.append(line.mid(5));
+        } else if (line==" *###") {
+            processResponseBuffer();
         } else {
             emit this->serverOutput(OutputType::ServerInfoOutput,line);
             parseOutputForEvents(line);

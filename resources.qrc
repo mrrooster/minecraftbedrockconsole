@@ -2,5 +2,6 @@
     <qresource prefix="/">
         <file>lang/mcbc_en_GB.qm</file>
         <file>lang/mcbc_en.qm</file>
+        <file>LICENCE</file>
     </qresource>
 </RCC>

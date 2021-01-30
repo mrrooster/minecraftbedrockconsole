@@ -16,6 +16,7 @@
 #include <QMainWindow>
 #include <server/bedrockserver.h>
 #include <backup/backupmanager.h>
+#include <widgets/playerinfowidget.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -36,6 +37,7 @@ private:
     Ui::MainWindow *ui;
     BedrockServer *server;
     BackupManager *backups;
+    PlayerInfoWidget *playerInfoWidget;
     bool shuttingDown;
 
     void setOptions();
@@ -48,7 +50,6 @@ private:
     void setBackupFrequencyLabel(int delayHours);
 
 private slots:
-    void handleServerOutput(BedrockServer::OutputType type, QString message);
     void handleServerStateChange(BedrockServer::ServerState newState);
     void setupBackupTimerLabel();
     void setupBackupStorageUsedLabel();

@@ -15,10 +15,13 @@
 #include <QFileDialog>
 #include <QSettings>
 #include <QDateTime>
+#include <QCloseEvent>
+#include <QTextEdit>
+#include <QDesktopServices>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow), shuttingDown(false)
+    , ui(new Ui::MainWindow), shuttingDown(false), playerInfoWidget(nullptr)
 {
     ui->setupUi(this);
     setWindowTitle(tr("Bedrock server console"));
@@ -26,22 +29,73 @@ MainWindow::MainWindow(QWidget *parent)
     this->server = new BedrockServer(this);
     this->backups = new BackupManager(this->server, this);
 
-    connect(this->server,&BedrockServer::serverOutput,this,&MainWindow::handleServerOutput);
+    ui->copyright->setText(QString("<style>a {color: green;}</style>Version %1<br/>Built using <a href='mcbc:/qt'>Qt</a>, licenced under the <a href='mcbc:/gpl'>GNU GPL v3</a>. Latest version on <a href='https://github.com/mrrooster/minecraftbedrockconsole'>github</a>.").arg(qApp->applicationVersion()));
+    ui->copyright->setStyleSheet("font-size: 8pt; color: grey;");
+
+    connect(ui->copyright,&QLabel::linkActivated,this,[=](QString url) {
+       if (url=="mcbc:/qt") {
+           qApp->aboutQt();
+       } else if (url=="mcbc:/gpl") {
+           QDialog dialog(this);
+
+           dialog.setLayout(new QVBoxLayout);
+           QWidget *w;
+
+           w = new QLabel();
+           ((QLabel*)w)->setText(QString(tr("<style>a {color: green;}</style>%1 is licenced under the <a href='https://www.gnu.org/licenses/gpl-3.0.html'>GNU GPL version 3</a>.<br/><br/>For more information see <a href='https://www.gnu.org/licenses/licenses.html'>the GNU website</a>.")).arg(qApp->applicationName()));
+           ((QLabel*)w)->setOpenExternalLinks(true);
+           dialog.layout()->addWidget(w);
+
+           w = new QTextEdit();
+           QFile gpl(":/LICENCE");
+           gpl.open(QIODevice::ReadOnly);
+           ((QTextEdit*)w)->setText(QString(gpl.readAll()));
+
+           dialog.layout()->addWidget(w);
+
+           w = new QLabel();
+           ((QLabel*)w)->setText(QString(tr("(c) Copyright Ian Clark.<br/>There is NO WARRENTY, either express or implied.")));
+           w->setStyleSheet("color: grey; font-size: 8pt;");
+
+           dialog.layout()->addWidget(w);
+           dialog.setMaximumWidth(500);
+           dialog.setMinimumWidth(500);
+
+           dialog.setWindowTitle(tr("Licence information","Licence dialog title"));
+           dialog.exec();
+       } else {
+           QDesktopServices::openUrl(url);
+       }
+    });
+
+    ui->serverConsole->setServer(this->server);
+
+    //connect(this->server,&BedrockServer::serverOutput,this,&MainWindow::handleServerOutput);
     connect(this->server,&BedrockServer::serverStateChanged,this,&MainWindow::handleServerStateChange);
+    connect(this->server,&BedrockServer::serverDifficulty,this,[=](BedrockServer::ServerDifficulty d) {
+        this->ui->difficultySlider->setValue((int)d);
+        this->ui->difficultyLabel->setText(
+                    (d==0) ? tr("Peaceful") :
+                    (d==1) ? tr("Easy") :
+                    (d==2) ? tr("Normal") :
+                    (d==3) ? tr("Hard")
+                           : tr("UNKNOWN")
+                    );
+    });
 
     connect(this->backups,&BackupManager::backupFailed,this,[=](BackupManager::FailReason reason) {
         if (reason==BackupManager::BackupFolderNotFound) {
-            handleServerOutput(BedrockServer::ErrorOutput,QString(tr("The backup folder can not be found. Automatic backup failed.")));
+            emit this->server->serverOutput(BedrockServer::ErrorOutput,QString(tr("The backup folder can not be found. Automatic backup failed.")));
         }
         this->ui->instantBackup->setEnabled(true);
     });
     connect(this->backups,&BackupManager::backupTimerChanged,this,&MainWindow::setupBackupTimerLabel);
     connect(this->backups,&BackupManager::backupSavedToFile,this,[=](QString file){
-        handleServerOutput(BedrockServer::InfoOutput,QString(tr("Backup saved to: %1")).arg(file));
+        emit this->server->serverOutput(BedrockServer::InfoOutput,QString(tr("Backup saved to: %1")).arg(file));
         this->ui->instantBackup->setEnabled(true);
     });
     connect(this->backups,&BackupManager::backupFileDeleted,this,[=](QString file){
-        handleServerOutput(BedrockServer::InfoOutput,QString(tr("Backup deleted: %1")).arg(file));
+        emit this->server->serverOutput(BedrockServer::InfoOutput,QString(tr("Backup deleted: %1")).arg(file));
     });
     connect(this->backups,&BackupManager::backupStarting,this,[=](){
         this->ui->instantBackup->setDisabled(true);
@@ -56,7 +110,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     this->handleServerStateChange(this->server->GetCurrentState());
     if (!this->backups->backupStorageFolderValid()) {
-        handleServerOutput(BedrockServer::ErrorOutput,"The backup folder is not set correctly. Automatic backups will not work.");
+        emit this->server->serverOutput(BedrockServer::ErrorOutput,"The backup folder is not set correctly. Automatic backups will not work.");
     }
 
     // FOR NOW
@@ -86,46 +140,30 @@ void MainWindow::closeEvent(QCloseEvent *event)
     }
 }
 
-void MainWindow::handleServerOutput(BedrockServer::OutputType type, QString message)
-{
-    switch (type) {
-    case BedrockServer::OutputType::ServerInfoOutput :
-       this->ui->serverOutput->appendHtml(QString("<code>%1</code>").arg(message));
-       break;
-    case BedrockServer::OutputType::InfoOutput :
-       this->ui->serverOutput->appendHtml(QString("<span style='color: #006de9;'><code>%1</code></span>").arg(message));
-       break;
-    case BedrockServer::OutputType::ErrorOutput :
-       this->ui->serverOutput->appendHtml(QString("<span style='color: #e90b00;'><code>%1</code></span>").arg(message));
-       break;
-    case BedrockServer::OutputType::ServerStatus :
-       this->ui->serverOutput->appendHtml(QString("<span style='color: #31ac0f;'><code>%1</code></span>").arg(message));
-       break;
-    default:
-        this->ui->serverOutput->appendPlainText(message);
-    }
-    this->ui->serverOutput->ensureCursorVisible();
-}
-
 void MainWindow::handleServerStateChange(BedrockServer::ServerState newState)
 {
     this->ui->serverState->setText(this->server->GetCurrentStateName());
 
+    bool running=false;
+    bool startable = false;
     if (newState==BedrockServer::ServerStopped || newState==BedrockServer::ServerNotRunning) {
         this->ui->serverState->setStyleSheet("background-color: #ff9797;"); // Reddish
         if (shuttingDown) {
             this->close();
         }
+        startable = true;
     } else if (newState==BedrockServer::ServerLoading || newState==BedrockServer::ServerRestarting) {
         this->ui->serverState->setStyleSheet("background-color: #ffddb5;"); // Orangy
     } else if (newState==BedrockServer::ServerStartup || newState==BedrockServer::ServerShutdown) {
         this->ui->serverState->setStyleSheet("background-color: #fffdb5;"); // Yellowy
     } else if (newState==BedrockServer::ServerRunning) {
         this->ui->serverState->setStyleSheet("background-color: #ddffdd;"); // Green
+        running=true;
     }
 
-    this->ui->startServer->setEnabled( (newState==BedrockServer::ServerNotRunning || newState==BedrockServer::ServerStopped)  );
-    this->ui->stopServer->setDisabled( (newState==BedrockServer::ServerNotRunning || newState==BedrockServer::ServerStopped)  );
+    this->ui->startServer->setEnabled( startable );
+    this->ui->stopServer->setEnabled( running );
+    this->ui->difficultySlider->setEnabled( running );
 }
 
 void MainWindow::setOptions()
@@ -176,22 +214,16 @@ void MainWindow::setOptions()
 
 void MainWindow::setupUi()
 {
-    this->ui->serverOutput->setMaximumBlockCount(20000);
-    this->ui->commandEdit->setPlaceholderText(tr("Server command..."));
-
     connect(ui->startServer,&QPushButton::clicked,this->server,&BedrockServer::startServer);
     connect(ui->stopServer,&QPushButton::clicked,this->server,&BedrockServer::stopServer);
 
     connect(ui->instantBackup,&QPushButton::clicked,this,[=](){
         QString destination = QFileDialog::getSaveFileName(this,"Save backup to...","backup.zip","*.zip");
-        this->backups->backupToFile(destination);
+        if (destination!="") {
+            this->backups->backupToFile(destination);
+        }
     });
     connect(ui->scheduleBackup,&QPushButton::clicked,this->backups,&BackupManager::scheduleBackup);
-
-    connect(ui->sendButton,&QPushButton::clicked,this,[=]() {
-        this->server->sendCommandToServer(this->ui->commandEdit->text());
-        this->ui->commandEdit->clear();
-    });
 
     // Settings
     connect(this->ui->selectServerFolder,&QPushButton::clicked,this,[=]() {this->ui->serverFolder->setText(QFileDialog::getExistingDirectory(this,tr("Select Minecraft Bedrock server folder"),"",QFileDialog::ShowDirsOnly));});
@@ -250,9 +282,26 @@ void MainWindow::setupUi()
         this->ui->restrictBackupAge->setText(QString(tr("Delete backups older than %Ln day(s)","backup_age",value)));
     });
 
+    connect(this->ui->difficultySlider,&QSlider::valueChanged,this->server,&BedrockServer::setDifficulty);
+
+    // Player widget
+    connect(this->ui->playerList,&QTreeView::clicked,this,[=](QModelIndex index) {
+        if (this->playerInfoWidget!=nullptr) {
+            this->playerInfoWidget->deleteLater();
+            this->playerInfoWidget=nullptr;
+        }
+        QString xuid = this->server->getXuidFromIndex(index);
+        if (xuid!="") {
+            this->playerInfoWidget = new PlayerInfoWidget(this->server,xuid,this);
+            this->ui->playerListLayout->addWidget(this->playerInfoWidget);
+        }
+    });
 
     setOptions();
     this->ui->restrictBackupAge->setText(QString(tr("Delete backups older than %Ln day(s)","backup_age",this->ui->restrictBackupAgeSlider->value())));
+
+    // Set the model for the treeview
+    this->ui->playerList->setModel(this->server->getServerModel());
 //    connect(this->ui->tabWidget,&QTabWidget::currentChanged,this,[=](int idx) { if (idx==1) {setOptions();}});
     this->ui->tabWidget->setCurrentIndex( serverLocationValid() ? 0 : 1 );
 }
