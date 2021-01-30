@@ -21,9 +21,29 @@ Also, create a folder for backups, and tell it about that too.
 * Take a backup without stopping the server
 * Backups can be automatic, or on certain events.
 
+## Users
+
+![The users window](doc/img/main_users.png)
+
+This is a list of users on the server, you can change a users permission level. 
+
 ## Options
 
 ![The options window](doc/img/main_options.png)
+
+The options window lets you set where backups go, and where your server is.
+
+You can also set limits on the amount of disk space used by backups, and other options relating to auto expiry.
+
+## Backup triggers
+
+![The backup triggers window](doc/img/main_backups.png)
+
+Here you define what triggers a backup. 
+
+The option to wait between backups is to prevent excessive load on a server should a lot of people join or leave in quick sucession. A triggered backup occuring within this number of minutes of the previous backup will be made to wait. Multiple backups triggered in the 'cooldown' period will only cause one to happen.
+
+The `Backup to ZIP file` button will always trigger a backup.
 
 ## Backups
 
