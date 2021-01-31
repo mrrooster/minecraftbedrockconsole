@@ -1,5 +1,6 @@
 #include "playerinfowidget.h"
 #include "ui_playerinfowidget.h"
+#include <QInputDialog>
 
 PlayerInfoWidget::PlayerInfoWidget(BedrockServer *server, QString xuid, QWidget *parent) :
     QWidget(parent),
@@ -20,6 +21,16 @@ PlayerInfoWidget::PlayerInfoWidget(BedrockServer *server, QString xuid, QWidget 
         this->server->setPermissionLevelForUser(this->xuid,(BedrockServer::PermissionLevel) idx);
     });
 
+    connect(this->ui->kickUser,&QPushButton::clicked,this,[=]() {
+        if (this->userIsOnline) {
+            bool ok;
+            QString reason = QInputDialog::getText(this,QString(tr("Kick player: %1")).arg(this->ui->name->text()),QString(tr("Click OK to kick <b>%1</b>, otherwise click Cancel. You can also enter a reason.")).arg(this->ui->name->text()),QLineEdit::Normal,"",&ok);
+            if (ok) {
+                qDebug()<<"Kicking"<<this->ui->name->text()<<"for reason:"<<reason;
+                this->server->sendCommandToServer(QString("kick %1 %2").arg(this->server->getPlayerNameFromXuid(this->xuid)).arg(reason));
+            }
+        }
+    });
     connect(this->server,&BedrockServer::serverPermissionsChanged,this,[=]() {
         this->ui->permissionLevel->setCurrentIndex(this->server->getPermissionLevel(xuid));
     });
@@ -35,6 +46,7 @@ PlayerInfoWidget::PlayerInfoWidget(BedrockServer *server, QString xuid, QWidget 
             setOnline(false);
         }
     });
+
 }
 
 PlayerInfoWidget::~PlayerInfoWidget()
@@ -46,4 +58,6 @@ void PlayerInfoWidget::setOnline(bool state)
 {
     this->ui->onlineStatus->setText( state ? "Online" : "Offline" );
     this->ui->onlineStatus->setStyleSheet( state ? "color: green;" : "color: red;" );
+    this->userIsOnline=state;
+    this->ui->onlinePanel->setVisible(state);
 }

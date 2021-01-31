@@ -191,7 +191,6 @@ void MainWindow::setOptions()
     bool doRegularBackups = settings.value("doRegularBackups",false).toBool();
     this->ui->alwaysBackupOnTime->setChecked(settings.value("alwaysBackupOnTime",false).toBool());
     this->ui->doRegularBackups->setChecked(doRegularBackups);
-    this->ui->backupFrequencyLabel->setEnabled(doRegularBackups);
     this->ui->backupFrequencySlider->setEnabled(doRegularBackups);
     this->ui->alwaysBackupOnTime->setEnabled(doRegularBackups);
     this->ui->restrictBackupsStorageUsage->setChecked(this->backups->getStorageFolderSizeIsLimited());
@@ -254,6 +253,8 @@ void MainWindow::setupUi()
         setBackupFrequencyLabel(value);
         this->backups->setBackupFrequency(value);
     });
+    connect(this->ui->doRegularBackups,&QCheckBox::stateChanged,this->ui->backupFrequencySlider,&QSlider::setEnabled);
+    connect(this->ui->doRegularBackups,&QCheckBox::stateChanged,this->ui->backupFrequencySlider,&QSlider::setEnabled);
     connect(this->ui->doRegularBackups,&QCheckBox::stateChanged,this->backups,&BackupManager::setEnableTimedBackups);
     connect(this->ui->alwaysBackupOnTime,&QCheckBox::stateChanged,this->backups,&BackupManager::setBackupTimerIgnoresOtherEvents);
     connect(this->ui->tabWidget,&QTabWidget::currentChanged,this,[=](int idx) {
@@ -263,6 +264,7 @@ void MainWindow::setupUi()
     });
     connect(this->ui->restrictBackupsStorageUsage,&QCheckBox::stateChanged,this,[=](bool state) {
         this->backups->setLimitStorageFolderSize(state);
+        this->ui->maxStorageUsageMiB->setEnabled(state);
         setupBackupStorageUsedLabel();
     });
     connect(this->ui->maxStorageUsageMiB,&QLineEdit::textChanged,this,[=](QString text) {
@@ -272,11 +274,13 @@ void MainWindow::setupUi()
     });
 
     connect(this->ui->restrictNumberOfBackups,&QCheckBox::stateChanged,this->backups,&BackupManager::setLimitStorageFolderItemCount);
+    connect(this->ui->restrictNumberOfBackups,&QCheckBox::stateChanged,this->ui->restrictNumberOfBackupsAmount,&QLineEdit::setEnabled);
     connect(this->ui->restrictNumberOfBackupsAmount,&QLineEdit::textChanged,this,[=](QString value) {
         this->backups->setMaximumStorageFolderItemCount(value.toInt());
     });
 
     connect(this->ui->restrictBackupAge,&QCheckBox::stateChanged,this->backups,&BackupManager::setLimitStorageFolderItemAge);
+    connect(this->ui->restrictBackupAge,&QCheckBox::stateChanged,this->ui->restrictBackupAgeSlider,&QSlider::setEnabled);
     connect(this->ui->restrictBackupAgeSlider,&QSlider::valueChanged,this,[=](int value) {
         this->backups->setMaximumStorageFolderItemAgeInDays(value);
         this->ui->restrictBackupAge->setText(QString(tr("Delete backups older than %Ln day(s)","backup_age",value)));
@@ -326,7 +330,7 @@ void MainWindow::setBackupDelayLabel(int delay)
 
 void MainWindow::setBackupFrequencyLabel(int delayHours)
 {
-    this->ui->backupFrequencyLabel->setText(QString(tr("%Ln hour(s)","backup frequency",delayHours)));
+    this->ui->doRegularBackups->setText(QString(tr("Schedule a backup at least every %Ln hour(s)","backup frequency",delayHours)));
 }
 
 void MainWindow::setupBackupTimerLabel()
@@ -352,10 +356,13 @@ void MainWindow::setupBackupStorageUsedLabel()
         // Hide the progress bar
         if (this->ui->storageUsedBar->isVisible()) {
             this->ui->storageUsage->setMinimumHeight(this->ui->storageUsedBar->height());
+            this->ui->storageUsage->setMaximumHeight(this->ui->storageUsedBar->height());
         }
         this->ui->storageUsedBar->setVisible(false);
+        this->ui->storageUsage->setVisible(true);
     } else {
         this->ui->storageUsedBar->setVisible(true);
+        this->ui->storageUsage->setVisible(false);
     }
 }
 

@@ -20,6 +20,7 @@ private:
     Ui::PlayerInfoWidget *ui;
     BedrockServer *server;
     QString xuid;
+    bool userIsOnline;
 
     void setOnline(bool state);
 };

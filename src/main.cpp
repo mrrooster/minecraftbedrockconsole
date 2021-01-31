@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName("Rooster Productions");
     QCoreApplication::setOrganizationDomain("ohmyno.co.uk");
     QCoreApplication::setApplicationName("MCBedrockCons");
-    QCoreApplication::setApplicationVersion("202101302146");
+    QCoreApplication::setApplicationVersion("202101310150");
     QApplication a(argc, argv);
     QTranslator translator;
 

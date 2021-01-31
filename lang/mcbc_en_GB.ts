@@ -4,7 +4,8 @@
 <context>
     <name>MainWindow</name>
     <message numerus="yes">
-        <location filename="../src/mainwindow.cpp" line="245"/>
+        <location filename="../src/mainwindow.cpp" line="286"/>
+        <location filename="../src/mainwindow.cpp" line="305"/>
         <source>Delete backups older than %Ln day(s)</source>
         <comment>backup_age</comment>
         <translation>
@@ -13,7 +14,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/mainwindow.cpp" line="272"/>
+        <location filename="../src/mainwindow.cpp" line="328"/>
         <source>Wait at least %Ln minute(s) between backups</source>
         <comment>backup delay</comment>
         <translation>
@@ -22,10 +23,18 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/mainwindow.cpp" line="277"/>
-        <source>%Ln hour(s)</source>
+        <location filename="../src/mainwindow.cpp" line="333"/>
+        <source>Schedule a backup at least every %Ln hour(s)</source>
         <comment>backup frequency</comment>
         <translation>
+            <numerusform>Schedule a backup at least every hour</numerusform>
+            <numerusform>Schedule a backup at least every %Ln hours</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%Ln hour(s)</source>
+        <comment>backup frequency</comment>
+        <translation type="vanished">
             <numerusform>%Ln hour</numerusform>
             <numerusform>%Ln hours</numerusform>
         </translation>

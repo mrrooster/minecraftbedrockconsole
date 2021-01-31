@@ -97,6 +97,38 @@
      </property>
     </spacer>
    </item>
+   <item>
+    <widget class="QWidget" name="onlinePanel" native="true">
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <layout class="QGridLayout" name="onlineActions">
+        <item row="0" column="0">
+         <widget class="QPushButton" name="kickUser">
+          <property name="text">
+           <string>Kick</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
   </layout>
  </widget>
  <resources/>
