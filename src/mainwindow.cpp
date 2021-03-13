@@ -258,7 +258,7 @@ void MainWindow::setupUi()
     connect(this->ui->doRegularBackups,&QCheckBox::stateChanged,this->backups,&BackupManager::setEnableTimedBackups);
     connect(this->ui->alwaysBackupOnTime,&QCheckBox::stateChanged,this->backups,&BackupManager::setBackupTimerIgnoresOtherEvents);
     connect(this->ui->tabWidget,&QTabWidget::currentChanged,this,[=](int idx) {
-       if (idx==1) { // Options page
+       if (idx==2) { // Options page
            this->setupBackupStorageUsedLabel();
        }
     });
@@ -307,7 +307,7 @@ void MainWindow::setupUi()
     // Set the model for the treeview
     this->ui->playerList->setModel(this->server->getServerModel());
 //    connect(this->ui->tabWidget,&QTabWidget::currentChanged,this,[=](int idx) { if (idx==1) {setOptions();}});
-    this->ui->tabWidget->setCurrentIndex( serverLocationValid() ? 0 : 1 );
+    this->ui->tabWidget->setCurrentIndex( serverLocationValid() ? 0 : 2 );
 }
 
 QString MainWindow::getServerRootFolder()
