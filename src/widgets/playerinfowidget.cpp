@@ -1,6 +1,7 @@
 #include "playerinfowidget.h"
 #include "ui_playerinfowidget.h"
 #include <QInputDialog>
+#include <QDebug>
 
 PlayerInfoWidget::PlayerInfoWidget(BedrockServer *server, QString xuid, QWidget *parent) :
     QWidget(parent),

@@ -13,6 +13,8 @@
 #include "backupmanager.h"
 #include <QSettings>
 #include <QDir>
+#include <QDebug>
+#include <QDateTime>
 
 #define BACKUP_PREFIX "server_backup_"
 

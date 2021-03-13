@@ -2,6 +2,8 @@
 #include <QFileIconProvider>
 #include <QModelIndex>
 #include <QSettings>
+#include <QDateTime>
+#include <QAbstractFileIconProvider>
 
 #define ONLINE_ROOT 1
 #define ONLINE_USER 2

@@ -64,6 +64,8 @@ signals:
     void serverPermissionList(QStringList ops, QStringList members, QStringList visitors);
     void serverPermissionsChanged(); // Connect to this if you care about permission changes.
 
+    void serverWhitelist(QStringList members);
+
 public slots:
     void scheduleBackup(); // Starts a backup unless one has run too recently, if so, schedules it instead.
     void startBackup(); // You must call completeBackup if you get a backupFinished. (Once you've done with the zip)

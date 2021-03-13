@@ -41,19 +41,19 @@ MainWindow::MainWindow(QWidget *parent)
            dialog.setLayout(new QVBoxLayout);
            QWidget *w;
 
-           w = new QLabel();
+           w = new QLabel(&dialog);
            ((QLabel*)w)->setText(QString(tr("<style>a {color: green;}</style>%1 is licenced under the <a href='https://www.gnu.org/licenses/gpl-3.0.html'>GNU GPL version 3</a>.<br/><br/>For more information see <a href='https://www.gnu.org/licenses/licenses.html'>the GNU website</a>.")).arg(qApp->applicationName()));
            ((QLabel*)w)->setOpenExternalLinks(true);
            dialog.layout()->addWidget(w);
 
-           w = new QTextEdit();
+           w = new QTextEdit(&dialog);
            QFile gpl(":/LICENCE");
            gpl.open(QIODevice::ReadOnly);
            ((QTextEdit*)w)->setText(QString(gpl.readAll()));
 
            dialog.layout()->addWidget(w);
 
-           w = new QLabel();
+           w = new QLabel(&dialog);
            ((QLabel*)w)->setText(QString(tr("(c) Copyright Ian Clark.<br/>There is NO WARRENTY, either express or implied.")));
            w->setStyleSheet("color: grey; font-size: 8pt;");
 

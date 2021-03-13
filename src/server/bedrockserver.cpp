@@ -18,6 +18,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QDateTime>
 
 #include <QDebug>
 
@@ -129,7 +130,7 @@ QString BedrockServer::readServerLine()
     QString line;
     int idx = this->processOutputBuffer.indexOf("\r\n");
     if (idx>-1) {
-        line = this->processOutputBuffer.first(idx);
+        line = this->processOutputBuffer.left(idx);
         this->processOutputBuffer.remove(0,idx+2);
         idx = this->processOutputBuffer.indexOf("\r\n");
     }
@@ -169,7 +170,7 @@ void BedrockServer::processFinishedBackup()
    QString worldName;
    if (tempDir->isValid()) {
        while(!listOfFiles.isEmpty()) {
-           QList file = listOfFiles.takeFirst().split(":");
+           QList<QString> file = listOfFiles.takeFirst().split(":");
 
            qint64 destinationSize = file[1].toULongLong();
            QString destinationFileName = tempDir->path()+"/worlds/"+file[0];
@@ -214,8 +215,8 @@ void BedrockServer::processFinishedBackup()
        QProcess *zipper = new QProcess();
 
 
-       connect(zipper,&QProcess::finished,zipper,&QObject::deleteLater);
-       connect(zipper,&QProcess::finished,this,&BedrockServer::handleZipComplete);
+       QObject::connect(zipper,&QProcess::finished,zipper,&QObject::deleteLater);
+       QObject::connect(zipper,&QProcess::finished,this,&BedrockServer::handleZipComplete);
 
        zipper->setProgram("powershell");
        QStringList zipperArguments;
@@ -319,6 +320,30 @@ void BedrockServer::processResponseBuffer()
                 }
             }
             emit this->serverPermissionList(ops,members,visitors);
+        } else if (command=="whitelist") {
+            QStringList whitelistedUsers;
+
+            QJsonArray results = doc.object().value("result").toArray();
+            emit this->serverOutput(OutputType::InfoOutput,tr("Server whitelist:"));
+            for(int x=0;x<results.size();x++) {
+                QJsonObject result = results[x].toObject();
+                QString name = result.value("name").toString();
+                bool ignoresPlayerLimit = result.value("ignoresPlayerLimit").toBool();
+                whitelistedUsers.append(name);
+                emit this->serverOutput(OutputType::InfoOutput,tr("%1 %2").arg(QString(name)).arg(ignoresPlayerLimit ? " [Ignores player limit]" : ""));
+            }
+            emit this->serverWhitelist(whitelistedUsers);
+        } else if (command=="ops") {
+            QJsonArray results = doc.object().value("result").toArray();
+            emit this->serverOutput(OutputType::InfoOutput,tr("Server operators:"));
+            for(int x=0;x<results.size();x++) {
+                QString xuid = results[x].toString();
+                QString name = getPlayerNameFromXuid(xuid);
+                if (name!=xuid) {
+                    name = name + " ["+xuid+"]";
+                }
+                emit this->serverOutput(OutputType::InfoOutput,QString(name));
+            }
         }
     }
     this->responseBuffer.clear();
