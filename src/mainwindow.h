@@ -14,6 +14,7 @@
  **
 */
 #include <QMainWindow>
+#include <QLabel>
 #include <server/bedrockserver.h>
 #include <backup/backupmanager.h>
 #include <widgets/playerinfowidget.h>
@@ -38,6 +39,7 @@ private:
     BedrockServer *server;
     BackupManager *backups;
     PlayerInfoWidget *playerInfoWidget;
+    QLabel *statusBarWidget;
     bool shuttingDown;
 
     void setOptions();

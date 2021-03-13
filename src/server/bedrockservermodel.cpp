@@ -239,6 +239,11 @@ int BedrockServerModel::getPermissionLevel(QString xuid)
     return -1;
 }
 
+int BedrockServerModel::onlinePlayerCount()
+{
+    return this->onlineUsers.size();
+}
+
 QString BedrockServerModel::xuidToName(QString xuid) const
 {
     if (this->xuidToGamertag.contains(xuid)) {

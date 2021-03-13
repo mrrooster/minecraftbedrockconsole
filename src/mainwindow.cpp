@@ -25,6 +25,8 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setWindowTitle(tr("Bedrock server console"));
+    this->statusBarWidget = new QLabel();
+    this->statusBar()->addWidget(this->statusBarWidget);
 
     this->server = new BedrockServer(this);
     this->backups = new BackupManager(this->server, this);
@@ -299,6 +301,10 @@ void MainWindow::setupUi()
             this->playerInfoWidget = new PlayerInfoWidget(this->server,xuid,this);
             this->ui->playerListLayout->addWidget(this->playerInfoWidget);
         }
+    });
+
+    connect(this->server,&BedrockServer::serverStatusLine,this,[=](QString status) {
+       this->statusBarWidget->setText(status);
     });
 
     setOptions();

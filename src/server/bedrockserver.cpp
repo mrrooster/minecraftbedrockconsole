@@ -252,11 +252,13 @@ void BedrockServer::parseOutputForEvents(QString output)
         QString xuid = player.second;
         QString name = player.first;
         emit this->playerConnected(name,xuid);
+        emitStatusLine();
     } else if (output.startsWith("Player disconnected: ")) {
         QPair<QString,QString> player = parsePlayerString(output.mid(21));
         QString xuid = player.second;
         QString name = player.first;
         emit this->playerDisconnected(name,xuid);
+        emitStatusLine();
         qDebug()<<"Player left: "<<parsePlayerString(output.mid(21));
     } else if (output.startsWith("De-opped:")) {
         sendCommandToServer("permission list");
@@ -287,6 +289,7 @@ void BedrockServer::setState(BedrockServer::ServerState newState)
             this->backupDelayTimer.stop();
         }
         emit this->serverStateChanged(newState);
+        emitStatusLine();
     }
 }
 
@@ -347,6 +350,38 @@ void BedrockServer::processResponseBuffer()
         }
     }
     this->responseBuffer.clear();
+}
+
+void BedrockServer::emitStatusLine()
+{
+    QString state;
+    bool online = false;
+    switch (this->state) {
+    case ServerNotRunning:
+    case ServerStopped:
+        state = tr("Server is not running");
+        break;
+    case ServerStartup:
+    case ServerLoading:
+    case ServerRestarting:
+        state = tr("Server is starting up");
+        break;
+    case ServerShutdown:
+        state = tr("Server is shutting down");
+        break;
+    case ServerRunning:
+        state = tr("Server is running normally");
+        online = true;
+        break;
+    default:
+        state = tr("The state of the server is unknown");
+    }
+
+    QString onlineCount;
+    if (online) {
+        onlineCount=tr(", there are %1 player(s) online.","statusline_online_count").arg(QString::number(this->model->onlinePlayerCount()));
+    }
+    emit this->serverStatusLine(tr("%1%2","statusline").arg(state).arg(onlineCount));
 }
 
 QString BedrockServer::stateName(BedrockServer::ServerState state)

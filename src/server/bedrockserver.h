@@ -45,9 +45,9 @@ public:
     int getPermissionLevel(QString xuid);
     void setPermissionLevelForUser(QString xuid, PermissionLevel level);
 signals:
-    void serverStateChanged(ServerState newState);
+    void serverStateChanged(BedrockServer::ServerState newState);
 
-    void serverOutput(OutputType type, QString outputLine);
+    void serverOutput(BedrockServer::OutputType type, QString outputLine);
     void backupStarting();   // A request has been made to start a backup
     void backupStarted();    // A command has been sent to start the backup and the server has started it
     void backupInProgres();  // The server is still doing stuff
@@ -65,6 +65,8 @@ signals:
     void serverPermissionsChanged(); // Connect to this if you care about permission changes.
 
     void serverWhitelist(QStringList members);
+
+    void serverStatusLine(QString status); // A one line server status summary.
 
 public slots:
     void scheduleBackup(); // Starts a backup unless one has run too recently, if so, schedules it instead.
@@ -103,6 +105,7 @@ private:
     void setState(ServerState newState);
     bool serverRootIsValid();
     void processResponseBuffer();
+    void emitStatusLine();
 
 private slots:
     void handleServerOutput();
