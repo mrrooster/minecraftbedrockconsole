@@ -253,7 +253,7 @@ int BedrockServerModel::onlineOpCount()
             count++;
         }
     }
-    return 0;//count;
+    return count;
 }
 
 QString BedrockServerModel::xuidToName(QString xuid) const

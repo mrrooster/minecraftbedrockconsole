@@ -1,20 +1,18 @@
-#include "onlineplayerbar.h"
+#include "onlineplayerwidget.h"
 #include <QLabel>
 #include <server/bedrockservermodel.h>
 
-OnlinePlayerBar::OnlinePlayerBar(QWidget *parent) :QWidget(parent), server(nullptr)
+OnlinePlayerWidget::OnlinePlayerWidget(QWidget *parent) :QWidget(parent), server(nullptr)
 {
-    // For now, no border
-
-    QLabel *opsOnline = new QLabel("",this);
-    opsOnline->setStyleSheet("background-color: #fff7e0;");
-    opsOnline->setGeometry(geometry());
-    this->opsOnline = opsOnline;
-
     QLabel *usersOnline = new QLabel("",this);
-    usersOnline->setStyleSheet("background-color: #c6d8f5;");
+    usersOnline->setStyleSheet("background-color: #fff7e0;");
     usersOnline->setGeometry(geometry());
     this->usersOnline = usersOnline;
+
+    QLabel *opsOnline = new QLabel("",this);
+    opsOnline->setStyleSheet("background-color: #c6d8f5;");
+    opsOnline->setGeometry(geometry());
+    this->opsOnline = opsOnline;
 
     QLabel *overlay = new QLabel("",this);
     overlay->setAlignment(Qt::AlignCenter);
@@ -22,7 +20,7 @@ OnlinePlayerBar::OnlinePlayerBar(QWidget *parent) :QWidget(parent), server(nullp
     this->overlay = overlay;
 }
 
-void OnlinePlayerBar::setServer(BedrockServer *server)
+void OnlinePlayerWidget::setServer(BedrockServer *server)
 {
     this->server = server;
 
@@ -38,7 +36,7 @@ void OnlinePlayerBar::setServer(BedrockServer *server)
     setup();
 }
 
-void OnlinePlayerBar::resizeEvent(QResizeEvent *event)
+void OnlinePlayerWidget::resizeEvent(QResizeEvent *event)
 {
     this->usersOnline->setGeometry(geometry());
     this->overlay->setGeometry(geometry());
@@ -46,7 +44,7 @@ void OnlinePlayerBar::resizeEvent(QResizeEvent *event)
     QWidget::resizeEvent(event);
 }
 
-void OnlinePlayerBar::setup()
+void OnlinePlayerWidget::setup()
 {
     int onlineCount = 0;
     int onlineOpCount = 0;
@@ -57,15 +55,15 @@ void OnlinePlayerBar::setup()
         QString overlayText;
         onlineCount = model->onlinePlayerCount();
         onlineOpCount = model->onlineOpCount();
-        totalCount = 10;
+        totalCount = this->server->maxPlayers();
         width = (totalCount==0) ? 0 : this->width() / totalCount;
         if (onlineOpCount>0) {
-            overlayText = tr("%1 of %2 user(s) online, including %3 operators.")
+            overlayText = tr("Online: %1 of %2, %3 ops.")
                                     .arg(QString::number(onlineCount))
                                     .arg(QString::number(totalCount))
                                     .arg(QString::number(onlineOpCount));
         } else {
-            overlayText = tr("%1 of %2 user(s) online.")
+            overlayText = tr("Online: %1 of %2")
                                     .arg(QString::number(onlineCount))
                                     .arg(QString::number(totalCount));
 

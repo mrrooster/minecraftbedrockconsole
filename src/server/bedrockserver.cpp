@@ -19,6 +19,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QDateTime>
+#include <QTextStream>
 
 #include <QDebug>
 
@@ -88,6 +89,8 @@ void BedrockServer::startServer()
         setState(ServerNotRunning);
         emit this->serverOutput(ErrorOutput,tr("Server root folder is not valid. Server can not start."));
     } else if (this->serverProcess->state()==QProcess::NotRunning) {
+        loadConfiguration();
+        this->maximumPlayerCount = getConfigValue("max-players").toInt();
         this->serverProcess->setProgram(this->serverRootFolder+"\\bedrock_server.exe");
         this->serverProcess->start();
         setState(ServerLoading);
@@ -379,9 +382,88 @@ void BedrockServer::emitStatusLine()
 
     QString onlineCount;
     if (online) {
-        onlineCount=tr(", there are %1 user(s) online.","statusline_online_count").arg(QString::number(this->model->onlinePlayerCount()));
+        onlineCount=tr(", there are %Ln user(s) online.","status_text",this->model->onlinePlayerCount());
     }
     emit this->serverStatusLine(tr("%1%2","statusline").arg(state).arg(onlineCount));
+}
+
+void BedrockServer::loadConfiguration()
+{
+    QFile config(this->serverRootFolder+"/server.properties");
+
+    if (!(config.exists() && config.open(QIODevice::ReadOnly|QIODevice::Text))) {
+        return;
+    }
+
+    for(auto i=serverConfig.constBegin();i!=serverConfig.constEnd();i++) {
+        delete (*i);
+    }
+    serverConfig.clear();
+
+    QTextStream lines(&config);
+    ConfigEntry *entry=nullptr;
+
+    while (!lines.atEnd()) {
+        QString line = lines.readLine().trimmed();
+        if (line=="") {
+            continue;
+        }
+        if (line.startsWith('#') && entry) {
+            entry->help += line.mid(1).trimmed()+'\n';
+        } else if (line.contains('=')) {
+            if (entry) {
+                qDebug() << "Appending: " << entry->name << entry->value << entry->help;
+                this->serverConfig.append(entry);
+            }
+            entry = new ConfigEntry;
+
+            entry->name = line.left(line.indexOf('='));
+            QString value = line.mid(line.indexOf('=')+1);
+
+            switch (getTypeOfConfigValue(entry->name)) {
+                case String : entry->value = QVariant(value);break;
+                case Integer : entry->value = QVariant(value.toInt());break;
+                case Boolean : entry->value = QVariant(value == "true");break;
+                case Float : entry->value = QVariant(value.toDouble());break;
+            }
+        }
+    }
+    if (entry) {
+        qDebug() << "Appending: " << entry->name << entry->value << entry->help;
+        this->serverConfig.append(entry);
+    }
+
+    config.close();
+}
+
+BedrockServer::ConfigValueType BedrockServer::getTypeOfConfigValue(QString name)
+{
+    if (QStringList({"server-authoritative-block-breaking","correct-player-movement","content-log-file-enabled","texturepack-required","white-list","online-mode","allow-cheats","force-gamemode"}).contains(name)) {
+        return BedrockServer::ConfigValueType::Boolean;
+    } else if (QStringList({"max-player","server-port","server-portv6","view-distance","tick-distance","player-idle-timeout","max-threads","compression-threshold","player-movement-score-threshold"}).contains(name)) {
+        return BedrockServer::ConfigValueType::Integer;
+    } else if (name=="player-movement-distance-threshold") {
+        return BedrockServer::ConfigValueType::Float;
+    }
+    return BedrockServer::ConfigValueType::String;
+}
+
+QStringList BedrockServer::getPossibleValues(QString name)
+{
+    if (name=="gamemode") {
+        return {"survival", "creative",  "adventure"};
+    }
+    return QStringList();
+}
+
+QVariant BedrockServer::getConfigValue(QString name)
+{
+    for(auto i=this->serverConfig.constBegin();i!=this->serverConfig.constEnd();i++) {
+        if ((*i)->name == name) {
+            return (*i)->value;
+        }
+    }
+    return QVariant();
 }
 
 QString BedrockServer::stateName(BedrockServer::ServerState state)
@@ -484,6 +566,16 @@ void BedrockServer::setPermissionLevelForUser(QString xuid, BedrockServer::Permi
             sendCommandToServer("permission list");
         }
     }
+}
+
+QList<BedrockServer::ConfigEntry *> BedrockServer::serverConfiguration()
+{
+    return this->serverConfig;
+}
+
+int BedrockServer::maxPlayers()
+{
+    return this->maximumPlayerCount;
 }
 
 void BedrockServer::scheduleBackup()

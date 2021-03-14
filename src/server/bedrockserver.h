@@ -33,6 +33,13 @@ public:
     enum ServerDifficulty { Peacefull,Easy,Normal,Hard };
     enum PermissionLevel { Member,Operator,Visitor };
 
+    class ConfigEntry {
+    public:
+        QString name;
+        QVariant value;
+        QString help;
+    };
+
     QString GetCurrentStateName();
     ServerState GetCurrentState();
     QString stateName(ServerState state);
@@ -44,6 +51,8 @@ public:
     bool isOnline(QString xuid);
     int getPermissionLevel(QString xuid);
     void setPermissionLevelForUser(QString xuid, PermissionLevel level);
+    QList<BedrockServer::ConfigEntry*> serverConfiguration();
+    int maxPlayers();
 signals:
     void serverStateChanged(BedrockServer::ServerState newState);
 
@@ -79,11 +88,14 @@ public slots:
 //    void StopServer();
 
 private:
+    enum ConfigValueType { String,Integer,Float,Boolean };
+
     BedrockServerModel *model;
     QStandardItem *onlinePlayers;
     QStandardItem *operators;
     ServerDifficulty difficulty;
     QStringList responseBuffer;
+    QList<ConfigEntry*> serverConfig;
 
     QString serverRootFolder;
     QProcess *serverProcess;
@@ -92,6 +104,7 @@ private:
     ServerState state;
     QTimer backupDelayTimer; // if running
     int backupDelaySeconds; // Automated or triggered backups will wait at least this seconds between firing.
+    int maximumPlayerCount; // Read from config.
     bool backupScheduled; // set true to do a backup
     bool restartOnServerExit; // if true then unless the stop server method has been called the server will be kept running.
 
@@ -106,6 +119,10 @@ private:
     bool serverRootIsValid();
     void processResponseBuffer();
     void emitStatusLine();
+    void loadConfiguration();
+    ConfigValueType getTypeOfConfigValue(QString name);
+    QStringList getPossibleValues(QString name);
+    QVariant getConfigValue(QString name);
 
 private slots:
     void handleServerOutput();

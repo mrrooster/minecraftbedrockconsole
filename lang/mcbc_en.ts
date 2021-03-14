@@ -2,10 +2,22 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="en">
 <context>
+    <name>BedrockServer</name>
+    <message numerus="yes">
+        <location filename="../src/server/bedrockserver.cpp" line="385"/>
+        <source>, there are %Ln user(s) online.</source>
+        <comment>status_text</comment>
+        <translation>
+            <numerusform>, there is %Ln user online.</numerusform>
+            <numerusform>, there are %Ln users online.</numerusform>
+        </translation>
+    </message>
+</context>
+<context>
     <name>MainWindow</name>
     <message numerus="yes">
-        <location filename="../src/mainwindow.cpp" line="286"/>
-        <location filename="../src/mainwindow.cpp" line="305"/>
+        <location filename="../src/mainwindow.cpp" line="288"/>
+        <location filename="../src/mainwindow.cpp" line="311"/>
         <source>Delete backups older than %Ln day(s)</source>
         <comment>backup_age</comment>
         <translation>
@@ -14,7 +26,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/mainwindow.cpp" line="328"/>
+        <location filename="../src/mainwindow.cpp" line="338"/>
         <source>Wait at least %Ln minute(s) between backups</source>
         <comment>backup delay</comment>
         <translation>
@@ -23,7 +35,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/mainwindow.cpp" line="333"/>
+        <location filename="../src/mainwindow.cpp" line="343"/>
         <source>Schedule a backup at least every %Ln hour(s)</source>
         <comment>backup frequency</comment>
         <translation>

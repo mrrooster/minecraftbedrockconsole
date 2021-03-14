@@ -147,7 +147,7 @@
               <number>0</number>
              </property>
              <item>
-              <widget class="OnlinePlayerBar" name="onlineBar" native="true"/>
+              <widget class="OnlinePlayerWidget" name="onlineBar" native="true"/>
              </item>
             </layout>
            </widget>
@@ -659,9 +659,9 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>OnlinePlayerBar</class>
+   <class>OnlinePlayerWidget</class>
    <extends>QWidget</extends>
-   <header>widgets\onlineplayerbar.h</header>
+   <header>widgets\onlineplayerwidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
