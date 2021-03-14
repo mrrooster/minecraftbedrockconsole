@@ -31,6 +31,7 @@ public:
     bool isOnline(QString xuid);
     int getPermissionLevel(QString xuid);
     int onlinePlayerCount();
+    int onlineOpCount();
 signals:
     void serverPermissionsChanged(); // Connect to this if you care about permission changes.
 private:

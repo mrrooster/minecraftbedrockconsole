@@ -312,6 +312,10 @@ void MainWindow::setupUi()
 
     // Set the model for the treeview
     this->ui->playerList->setModel(this->server->getServerModel());
+
+
+    this->ui->onlineBar->setServer(this->server);
+
 //    connect(this->ui->tabWidget,&QTabWidget::currentChanged,this,[=](int idx) { if (idx==1) {setOptions();}});
     this->ui->tabWidget->setCurrentIndex( serverLocationValid() ? 0 : 2 );
 }

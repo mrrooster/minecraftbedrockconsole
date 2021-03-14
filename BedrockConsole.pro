@@ -16,6 +16,7 @@ SOURCES += \
     src/main.cpp \
     src/mainwindow.cpp \
     src/server/bedrockservermodel.cpp \
+    src/widgets/onlineplayerbar.cpp \
     src/widgets/playerinfowidget.cpp \
     src/widgets/serverconsolewidget.cpp
 
@@ -24,6 +25,7 @@ HEADERS += \
     src/server/bedrockserver.h \
     src/mainwindow.h \
     src/server/bedrockservermodel.h \
+    src/widgets/onlineplayerbar.h \
     src/widgets/playerinfowidget.h \
     src/widgets/serverconsolewidget.h
 

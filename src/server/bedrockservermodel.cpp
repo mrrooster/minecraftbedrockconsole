@@ -244,6 +244,18 @@ int BedrockServerModel::onlinePlayerCount()
     return this->onlineUsers.size();
 }
 
+int BedrockServerModel::onlineOpCount()
+{
+    int count=0;
+    for(auto x=this->onlineUsers.constBegin();x!=this->onlineUsers.constEnd();x++) {
+        QString user = (*x);
+        if (getPermissionLevel(user)==BedrockServer::Operator) {
+            count++;
+        }
+    }
+    return 0;//count;
+}
+
 QString BedrockServerModel::xuidToName(QString xuid) const
 {
     if (this->xuidToGamertag.contains(xuid)) {

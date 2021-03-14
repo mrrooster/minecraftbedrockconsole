@@ -379,7 +379,7 @@ void BedrockServer::emitStatusLine()
 
     QString onlineCount;
     if (online) {
-        onlineCount=tr(", there are %1 player(s) online.","statusline_online_count").arg(QString::number(this->model->onlinePlayerCount()));
+        onlineCount=tr(", there are %1 user(s) online.","statusline_online_count").arg(QString::number(this->model->onlinePlayerCount()));
     }
     emit this->serverStatusLine(tr("%1%2","statusline").arg(state).arg(onlineCount));
 }
