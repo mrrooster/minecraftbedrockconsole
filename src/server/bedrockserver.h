@@ -28,7 +28,7 @@ class BedrockServer : public QObject
 public:
     explicit BedrockServer(QObject *parent = nullptr);
 
-    enum OutputType { ServerInfoOutput,ServerErrorOutput,ServerStatus,InfoOutput,ErrorOutput };
+    enum OutputType { ServerInfoOutput,ServerErrorOutput,ServerStatus,InfoOutput,ErrorOutput,WarningOutput };
     enum ServerState { ServerLoading,ServerStartup,ServerRunning,ServerNotRunning,ServerStopped,ServerShutdown,ServerRestarting };
     enum ServerDifficulty { Peacefull,Easy,Normal,Hard };
     enum PermissionLevel { Member,Operator,Visitor };
@@ -37,6 +37,8 @@ public:
     public:
         QString name;
         QVariant value;
+        QVariant newValue;
+        QStringList possibleValues;
         QString help;
     };
 
@@ -53,6 +55,8 @@ public:
     void setPermissionLevelForUser(QString xuid, PermissionLevel level);
     QList<BedrockServer::ConfigEntry*> serverConfiguration();
     int maxPlayers();
+    int pendingShutdownSeconds();
+    void abortPendingShutdown();
 signals:
     void serverStateChanged(BedrockServer::ServerState newState);
 
@@ -77,14 +81,21 @@ signals:
 
     void serverStatusLine(QString status); // A one line server status summary.
 
+    void serverConfigurationUpdated();
+    void shutdownServerIn(int seconds);
+
 public slots:
     void scheduleBackup(); // Starts a backup unless one has run too recently, if so, schedules it instead.
     void startBackup(); // You must call completeBackup if you get a backupFinished. (Once you've done with the zip)
     void completeBackup();
     void startServer();
+    void startServerAfter(int ms);
+    void restartServerAfter(int ms);
     void stopServer();
+    void stopAndRestartServer();
     void sendCommandToServer(QString command);
     void setDifficulty(int difficulty);
+    void saveConfiguration();
 //    void StopServer();
 
 private:
@@ -96,19 +107,25 @@ private:
     ServerDifficulty difficulty;
     QStringList responseBuffer;
     QList<ConfigEntry*> serverConfig;
+    QMap<QString,ConfigEntry*> serverConfigByName;
 
     QString serverRootFolder;
     QProcess *serverProcess;
     QByteArray processOutputBuffer;
     QTemporaryDir *tempDir;
     ServerState state;
+    QTimer startTimer;
+    QTimer shutdownPendingTimer;
+    QTimer shutdownHeartbeatTimer;
     QTimer backupDelayTimer; // if running
     int backupDelaySeconds; // Automated or triggered backups will wait at least this seconds between firing.
     int maximumPlayerCount; // Read from config.
     bool backupScheduled; // set true to do a backup
     bool restartOnServerExit; // if true then unless the stop server method has been called the server will be kept running.
 
+    void actuallyStartServer(); // Does the server startup
     QString readServerLine();
+    QString cleanServerLine(QString line);
     bool canReadServerLine();
     bool serverHasData();
     void processRunningBackup();
@@ -123,6 +140,7 @@ private:
     ConfigValueType getTypeOfConfigValue(QString name);
     QStringList getPossibleValues(QString name);
     QVariant getConfigValue(QString name);
+    bool restartAfterStopped;
 
 private slots:
     void handleServerOutput();

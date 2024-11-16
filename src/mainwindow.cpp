@@ -18,6 +18,9 @@
 #include <QCloseEvent>
 #include <QTextEdit>
 #include <QDesktopServices>
+#include <QGridLayout>
+#include <QLineEdit>
+#include <QComboBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -83,6 +86,11 @@ MainWindow::MainWindow(QWidget *parent)
                     (d==3) ? tr("Hard")
                            : tr("UNKNOWN")
                     );
+    });
+
+    connect(this->server,&BedrockServer::serverConfigurationUpdated,this,[=]() {
+        this->setupServerProperties();
+        emit this->server->serverOutput(BedrockServer::WarningOutput,tr("Server configuration updated, server may need to be restarted."));
     });
 
     connect(this->backups,&BackupManager::backupFailed,this,[=](BackupManager::FailReason reason) {
@@ -161,6 +169,7 @@ void MainWindow::handleServerStateChange(BedrockServer::ServerState newState)
     } else if (newState==BedrockServer::ServerRunning) {
         this->ui->serverState->setStyleSheet("background-color: #ddffdd;"); // Green
         running=true;
+        setupServerProperties();
     }
 
     this->ui->startServer->setEnabled( startable );
@@ -217,6 +226,13 @@ void MainWindow::setupUi()
 {
     connect(ui->startServer,&QPushButton::clicked,this->server,&BedrockServer::startServer);
     connect(ui->stopServer,&QPushButton::clicked,this->server,&BedrockServer::stopServer);
+    connect(ui->restartAfter,&QPushButton::clicked,this,[=]() {
+        if (this->server->pendingShutdownSeconds()>=0) {
+            this->server->abortPendingShutdown();
+        } else {
+            this->server->restartServerAfter(this->ui->restartAfterSeconds->text().toInt()*1000);
+        }
+     });
 
     connect(ui->instantBackup,&QPushButton::clicked,this,[=](){
         QString destination = QFileDialog::getSaveFileName(this,"Save backup to...","backup.zip","*.zip");
@@ -318,6 +334,107 @@ void MainWindow::setupUi()
 
 //    connect(this->ui->tabWidget,&QTabWidget::currentChanged,this,[=](int idx) { if (idx==1) {setOptions();}});
     this->ui->tabWidget->setCurrentIndex( serverLocationValid() ? 0 : 2 );
+
+    // Server properties
+    connect(this->ui->saveConfig,&QPushButton::clicked,this->server,&BedrockServer::saveConfiguration);
+    connect(this->ui->saveConfigAndRestart,&QPushButton::clicked,this,[=](){
+        this->server->saveConfiguration();
+        this->server->restartServerAfter(this->ui->restartAfterSeconds->text().toInt() * 1000);
+    });
+
+    // Restart delay
+    connect(this->server,&BedrockServer::shutdownServerIn,this,[=](int sec) {
+        this->ui->restartAfterSeconds->setVisible(sec<0);
+        this->ui->restartAfterLabel->setVisible(sec<0);
+        if (sec>=0) {
+            this->ui->restartAfter->setText(tr("Stop restart (%1:%2)").arg(sec/60).arg(QString::number(sec%60),2,'0'));
+        } else {
+            this->ui->restartAfter->setText(tr("Restart after"));
+        }
+    });
+    connect(this->ui->restartAfterSeconds,&QLineEdit::textChanged,this,[=](QString value) {
+        bool parseable = false;
+        int val = value.toInt(&parseable);
+        if (parseable) {
+            QSettings().setValue("server/restartDelaySeconds",val);
+        }
+    });
+    this->ui->restartAfterSeconds->setText(QSettings().value("server/restartDelaySeconds",120).toString());
+}
+
+void MainWindow::setupServerProperties()
+{
+    if (this->server) {
+        auto props = this->server->serverConfiguration();
+        QWidget *w = new QWidget();
+        QGridLayout *l = new QGridLayout(w);
+
+        this->ui->serverPropertiesScrollArea->setWidget(w);
+        //l->setRowWrapPolicy(QFormLayout::WrapAllRows);
+        //l->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+        int row=0;
+        for(auto x=props.constBegin();x!=props.constEnd();x++) {
+            BedrockServer::ConfigEntry *conf = (*x);
+
+            QLabel *label = new QLabel();
+            label->setWordWrap(true);
+            label->setText(QString("<b>%1</b><br/><i>%2</i>").arg(conf->name).arg(conf->help));
+            label->setToolTip(conf->help);
+            label->setSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::Minimum);
+            QWidget *value;
+            if (conf->value.metaType().id()==QMetaType::Bool) {
+                QComboBox *valueBox = new QComboBox();
+                valueBox->addItem("true");
+                valueBox->addItem("false");
+                valueBox->setCurrentIndex(conf->value.toBool()?0:1);
+
+                connect(valueBox,&QComboBox::currentTextChanged,this,[=](QString text) {
+                   conf->newValue = text;
+                   if (conf->newValue!=conf->value) {
+                       valueBox->setStyleSheet("color:blue;");
+                   } else {
+                       valueBox->setStyleSheet("color:black;");
+                   }
+                });
+
+                value = valueBox;
+            } else if (conf->possibleValues.size()>0) {
+                QComboBox *valueBox = new QComboBox();
+                valueBox->addItems(conf->possibleValues);
+                valueBox->setCurrentIndex(conf->possibleValues.indexOf(conf->value.toString()));
+
+                connect(valueBox,&QComboBox::currentTextChanged,this,[=](QString text) {
+                   conf->newValue = text;
+                   if (conf->newValue!=conf->value) {
+                       valueBox->setStyleSheet("color:blue;");
+                   } else {
+                       valueBox->setStyleSheet("color:black;");
+                   }
+                });
+
+                value = valueBox;
+            } else {
+                QLineEdit *valueEdit = new QLineEdit();
+                valueEdit->setText(conf->value.toString());
+                value = valueEdit;
+
+                connect(valueEdit,&QLineEdit::textChanged,this,[=](QString text) {
+                   conf->newValue = text;
+                   if (conf->newValue!=conf->value) {
+                       valueEdit->setStyleSheet("color:blue;");
+                   } else {
+                       valueEdit->setStyleSheet("color:black;");
+                   }
+                });
+            }
+            value->setMaximumWidth(300);
+            value->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Maximum);
+
+            l->addWidget(label,row,0);
+            l->addWidget(value,row,1);
+            row++;
+        }
+    }
 }
 
 QString MainWindow::getServerRootFolder()

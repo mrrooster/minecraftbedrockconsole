@@ -87,16 +87,18 @@ void OnlinePlayerWidget::setup()
     }
     //this->usersOnline->setMaximumWidth(onlineCount * width);
     //this->usersOnline->setMinimumWidth(onlineCount * width);
-    QRect geom = geometry();
-    geom.setWidth((geom.width() / totalCount) * onlineOpCount);
-    this->opsOnline->setGeometry(geom);
-    this->opsOnline->setAutoFillBackground(true);
+    if (totalCount>0) {
+        QRect geom = geometry();
+        geom.setWidth((geom.width() / totalCount) * onlineOpCount);
+        this->opsOnline->setGeometry(geom);
+        this->opsOnline->setAutoFillBackground(true);
 
-    this->usersOnline->setGeometry(geom);
-    geom = geometry();
-    geom.setWidth((geom.width() / totalCount) * onlineCount);
-    this->usersOnline->setGeometry(geom);
-    this->usersOnline->setAutoFillBackground(true);
+        this->usersOnline->setGeometry(geom);
+        geom = geometry();
+        geom.setWidth((geom.width() / totalCount) * onlineCount);
+        this->usersOnline->setGeometry(geom);
+        this->usersOnline->setAutoFillBackground(true);
+    }
 
     this->usersOnline->repaint();
     this->opsOnline->repaint();

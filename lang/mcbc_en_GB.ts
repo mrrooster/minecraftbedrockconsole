@@ -8,8 +8,8 @@
         <source>, there are %Ln user(s) online.</source>
         <comment>status_text</comment>
         <translation>
-            <numerusform>, there are %Ln user(s) online.</numerusform>
             <numerusform>, there is %Ln user online.</numerusform>
+            <numerusform>, there are %Ln users online.</numerusform>
         </translation>
     </message>
 </context>

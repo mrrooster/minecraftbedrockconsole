@@ -23,7 +23,7 @@
 
 #include <QDebug>
 
-BedrockServer::BedrockServer(QObject *parent) : QObject(parent),tempDir(nullptr),state(ServerNotRunning),backupDelaySeconds(10),restartOnServerExit(true)
+BedrockServer::BedrockServer(QObject *parent) : QObject(parent),restartAfterStopped(false),tempDir(nullptr),state(ServerNotRunning),backupDelaySeconds(10),restartOnServerExit(true)
 {
     this->serverRootFolder = "";
     this->serverProcess = new QProcess();
@@ -52,6 +52,46 @@ BedrockServer::BedrockServer(QObject *parent) : QObject(parent),tempDir(nullptr)
            this->startBackup();
        }
     });
+
+    connect(&(this->startTimer),&QTimer::timeout,this,[=]() {
+        if (this->state==ServerRunning) {
+            this->stopAndRestartServer();
+        } else {
+            this->actuallyStartServer();
+        }
+    });
+
+    connect(&(this->shutdownPendingTimer),&QTimer::timeout,this,[=]() {
+        int ms = this->startTimer.remainingTime() ;
+        QString message = (ms > 180000) // Greater than 3 minutes
+                        ? tr("The server will restart in %1 minute(s).").arg((ms + 30000) / 1000 / 60)
+                        : tr("The server will restart in %1 seconds(s).").arg((ms + 500 )/1000);
+        this->sendCommandToServer(QString("say %1").arg(message));
+
+        if (ms>600000) { // More than 10 minutes left
+            this->shutdownPendingTimer.start(300000);
+        } else if (ms>60000) { // More than a minute left
+            this->shutdownPendingTimer.start(60000);
+        } else if (ms>30000) {
+            this->shutdownPendingTimer.start(30000);
+        } else {
+            this->shutdownPendingTimer.start(10000);
+        }
+    });
+
+    connect(&(this->shutdownHeartbeatTimer),&QTimer::timeout,this,[=]() {
+        if (this->startTimer.isActive() == false) {
+            emit shutdownServerIn(-1);
+        } else {
+            this->shutdownHeartbeatTimer.start(499);
+            emit shutdownServerIn((this->startTimer.remainingTime() + 500)/1000);
+        }
+    });
+
+    this->startTimer.setInterval(0);
+    this->startTimer.setSingleShot(true);
+    this->shutdownPendingTimer.setSingleShot(true);
+    this->shutdownHeartbeatTimer.setSingleShot(true);
 
     connect(this,&QObject::destroyed,this->serverProcess,&QProcess::kill);
 
@@ -85,6 +125,27 @@ void BedrockServer::completeBackup()
 
 void BedrockServer::startServer()
 {
+    this->startTimer.stop();
+    this->startTimer.setInterval(0);
+    this->startTimer.start();
+}
+
+void BedrockServer::startServerAfter(int ms)
+{
+    emit this->serverOutput(InfoOutput,tr("Server will start in %1 seconds.").arg(ms/1000));
+    this->startTimer.start(ms);
+}
+
+void BedrockServer::restartServerAfter(int ms)
+{
+    this->startServerAfter(ms);
+    this->shutdownPendingTimer.start(0);
+    this->shutdownHeartbeatTimer.start(0);
+}
+
+void BedrockServer::actuallyStartServer()
+{
+    this->restartAfterStopped = false;
     if (!serverRootIsValid()) {
         setState(ServerNotRunning);
         emit this->serverOutput(ErrorOutput,tr("Server root folder is not valid. Server can not start."));
@@ -109,6 +170,12 @@ void BedrockServer::stopServer()
         setState(ServerShutdown);
         sendCommandToServer("stop");
     }
+}
+
+void BedrockServer::stopAndRestartServer()
+{
+    this->restartAfterStopped=true;
+    stopServer();
 }
 
 void BedrockServer::sendCommandToServer(QString command)
@@ -136,6 +203,17 @@ QString BedrockServer::readServerLine()
         line = this->processOutputBuffer.left(idx);
         this->processOutputBuffer.remove(0,idx+2);
         idx = this->processOutputBuffer.indexOf("\r\n");
+    }
+    return line;
+}
+
+QString BedrockServer::cleanServerLine(QString line)
+{
+    // Removes the timestamp log bit.
+    int idx = -1;
+    if (line.startsWith("[") && (idx = line.indexOf("]"))>-1) {
+        // Assume there's a [2024-11-16 15:28:59:265 INFO] type prefix
+        line = line.mid(idx+2);
     }
     return line;
 }
@@ -217,17 +295,18 @@ void BedrockServer::processFinishedBackup()
 
        QProcess *zipper = new QProcess();
 
-
-       QObject::connect(zipper,&QProcess::finished,zipper,&QObject::deleteLater);
        QObject::connect(zipper,&QProcess::finished,this,&BedrockServer::handleZipComplete);
+       QObject::connect(zipper,&QProcess::finished,zipper,&QObject::deleteLater);
 
        zipper->setProgram("powershell");
        QStringList zipperArguments;
        zipperArguments <<"Compress-Archive"<<"-Path"<<"\""+tempDir->path()+"/worlds/\"";
 
        for(int x=0;x<otherFiles.size();x++) {
-           zipperArguments << ",";
-           zipperArguments << "\""+tempDir->path()+otherFiles[x]+"\"";
+            if (QFileInfo(tempDir->path()+otherFiles[x]).exists()) {
+                zipperArguments << ",";
+                zipperArguments << "\""+tempDir->path()+otherFiles[x]+"\"";
+            }
        }
 
        zipperArguments<<"-DestinationPath"<<"\""+tempDir->path()+"/backup.zip\"";
@@ -293,6 +372,9 @@ void BedrockServer::setState(BedrockServer::ServerState newState)
         }
         emit this->serverStateChanged(newState);
         emitStatusLine();
+        if (newState == ServerStopped && restartAfterStopped) {
+            this->startServer();
+        }
     }
 }
 
@@ -399,6 +481,7 @@ void BedrockServer::loadConfiguration()
         delete (*i);
     }
     serverConfig.clear();
+    serverConfigByName.clear();
 
     QTextStream lines(&config);
     ConfigEntry *entry=nullptr;
@@ -414,6 +497,7 @@ void BedrockServer::loadConfiguration()
             if (entry) {
                 qDebug() << "Appending: " << entry->name << entry->value << entry->help;
                 this->serverConfig.append(entry);
+                this->serverConfigByName.insert(entry->name,entry);
             }
             entry = new ConfigEntry;
 
@@ -426,14 +510,57 @@ void BedrockServer::loadConfiguration()
                 case Boolean : entry->value = QVariant(value == "true");break;
                 case Float : entry->value = QVariant(value.toDouble());break;
             }
+
+            entry->possibleValues = getPossibleValues(entry->name);
         }
     }
     if (entry) {
         qDebug() << "Appending: " << entry->name << entry->value << entry->help;
         this->serverConfig.append(entry);
+        this->serverConfigByName.insert(entry->name,entry);
     }
 
     config.close();
+}
+
+void BedrockServer::saveConfiguration()
+{
+    qDebug()<<"Saving configuration.";
+
+    emit this->serverOutput(OutputType::InfoOutput,tr("Saving server configuration."));
+    QFile config(this->serverRootFolder+"/server.properties");
+
+    if (!(config.exists() && config.open(QIODevice::ReadWrite|QIODevice::Text))) {
+        return;
+    }
+
+    QTextStream lines(&config);
+    QStringList outputLines;
+
+    while (!lines.atEnd()) {
+        QString line = lines.readLine();
+
+        if (!line.startsWith('#') && line.contains('=')) {
+            QString name = line.left(line.indexOf('='));
+            if (serverConfigByName.contains(name)) {
+                ConfigEntry *entry = serverConfigByName.value(name);
+                if (!entry->newValue.isNull() && (entry->value.toString() != entry->newValue.toString())) {
+                    line = QString("%1=%2").arg(name).arg(entry->newValue.toString());
+                    entry->value = entry->newValue;
+                }
+            }
+        }
+        outputLines.append(line);
+    }
+
+    lines.seek(0);
+
+    while(!outputLines.isEmpty()) {
+        lines << outputLines.takeFirst() << "\n";
+    }
+
+    config.close();
+    emit this->serverConfigurationUpdated();
 }
 
 BedrockServer::ConfigValueType BedrockServer::getTypeOfConfigValue(QString name)
@@ -452,6 +579,12 @@ QStringList BedrockServer::getPossibleValues(QString name)
 {
     if (name=="gamemode") {
         return {"survival", "creative",  "adventure"};
+    } else if (name=="difficulty") {
+        return {"peaceful","easy","normal","hard"};
+    } else if (name=="default-player-permission-level") {
+        return {"visitor", "member", "operator"};
+    } else if (name=="server-authoritative-movement") {
+        return {"client-auth", "server-auth", "server-auth-with-rewind"};
     }
     return QStringList();
 }
@@ -599,20 +732,21 @@ void BedrockServer::handleServerOutput()
 
     while(canReadServerLine()) {
         QString line = readServerLine();
+        QString cleanLine = cleanServerLine(line);
 
-        if (line=="Saving...") {
+        if (cleanLine=="Saving...") {
             emit backupStarting();
             emit this->serverOutput(OutputType::InfoOutput,tr("Server is preparing for the world files to be copied."));
             this->processRunningBackup();
-        } else if (line=="A previous save has not been completed.") {
+        } else if (cleanLine=="A previous save has not been completed.") {
             emit this->serverOutput(OutputType::InfoOutput,tr("Server is still preparing for the world files to be copied."));
             emit backupInProgres();
             this->processRunningBackup();
-        } else if (line=="Data saved. Files are now ready to be copied.") {
+        } else if (cleanLine=="Data saved. Files are now ready to be copied.") {
             emit this->serverOutput(OutputType::InfoOutput,tr("Server is ready for the world files to be copied."));
             emit backupSavingData();
             this->processFinishedBackup();
-        } else if (line=="Changes to the level are resumed.") {
+        } else if (cleanLine=="Changes to the level are resumed.") {
             emit this->serverOutput(OutputType::InfoOutput,tr("The server has resumed normal operations."));
             emit backupFinishedOnServer();
         } else if (line.contains("Difficulty: ") && this->state==ServerStartup) {
@@ -645,5 +779,22 @@ void BedrockServer::handleZipComplete()
         delete this->tempDir;
         this->tempDir=nullptr;
     }
+}
+
+int BedrockServer::pendingShutdownSeconds()
+{
+    if (this->startTimer.remainingTime()>0 && state==ServerRunning) {
+        return this->startTimer.remainingTime()/1000;
+    }
+    return -1;
+}
+
+void BedrockServer::abortPendingShutdown()
+{
+    this->startTimer.stop();
+    this->shutdownPendingTimer.stop();
+    this->shutdownHeartbeatTimer.stop();
+    this->restartAfterStopped = false;
+    emit shutdownServerIn(-1);
 }
 

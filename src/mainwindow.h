@@ -44,6 +44,7 @@ private:
 
     void setOptions();
     void setupUi();
+    void setupServerProperties();
     QString getServerRootFolder();
     bool serverLocationValid();
     void setBackupTimerActiveState(bool active);

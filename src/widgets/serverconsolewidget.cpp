@@ -38,6 +38,9 @@ void ServerConsoleWidget::handleServerOutput(BedrockServer::OutputType type, QSt
     case BedrockServer::OutputType::ErrorOutput :
        this->ui->serverOutput->appendHtml(QString("<span style='color: #e90b00;'><code>%1</code></span>").arg(message));
        break;
+    case BedrockServer::OutputType::WarningOutput :
+       this->ui->serverOutput->appendHtml(QString("<span style='background-color: #e90b00; color: yellow;'><code>%1</code></span>").arg(message));
+       break;
     case BedrockServer::OutputType::ServerStatus :
        this->ui->serverOutput->appendHtml(QString("<span style='color: #31ac0f;'><code>%1</code></span>").arg(message));
        break;

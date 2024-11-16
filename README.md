@@ -20,6 +20,7 @@ Also, create a folder for backups, and tell it about that too.
 * A console for sending commands to the server
 * Take a backup without stopping the server
 * Backups can be automatic, or on certain events.
+* Update the server.properties file
 
 ## Users
 
@@ -35,15 +36,23 @@ The options window lets you set where backups go, and where your server is.
 
 You can also set limits on the amount of disk space used by backups, and other options relating to auto expiry.
 
-## Backup triggers
+## Backup
 
-![The backup triggers window](doc/img/main_backup.png)
+![The backup window](doc/img/main_backup.png)
 
-Here you define what triggers a backup. 
+Here you define what triggers a backup. You can also initiate a backup and create a backup to a zip file that you can save.
 
 The option to wait between backups is to prevent excessive load on a server should a lot of people join or leave in quick sucession. A triggered backup occuring within this number of minutes of the previous backup will be made to wait. Multiple backups triggered in the 'cooldown' period will only cause one to happen.
 
 The `Backup to ZIP file` button will always trigger a backup.
+
+## Server properties
+
+![The server properties window](doc/img/main_serverproperties.png)
+
+This panel allows you to change the server properties. After updating the configuration you can save your changes, or save your changes and re-start the server.
+
+Re-starting the server will use the time defined in the input box at the top.
 
 ## Backups
 
@@ -61,3 +70,17 @@ To restore a backup:
 4. Start the server.
 
 **You must not copy the `worlds` folder over an existing `worlds` folder as this does not seem to work correctly.**
+
+
+## Versions
+
+#### 202103142142
+
+The first version
+
+#### 202411162232
+
+* Fixed server backups on more recent versions of the bedrock server.
+* Fixed backups where some files didn't exist
+* Added restart option and timer.
+* Added server properties maintenance.
