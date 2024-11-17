@@ -205,8 +205,8 @@ void MainWindow::setOptions()
     this->ui->backupFrequencySlider->setEnabled(doRegularBackups);
     this->ui->alwaysBackupOnTime->setEnabled(doRegularBackups);
     this->ui->restrictBackupsStorageUsage->setChecked(this->backups->getStorageFolderSizeIsLimited());
-    this->ui->storageUsage->setMinimumHeight(this->ui->storageUsedBar->height());
-    this->ui->storageUsedBar->setVisible(this->backups->getStorageFolderSizeIsLimited());
+    //this->ui->storageUsage->setMinimumHeight(this->ui->storageUsedBar->height());
+    //this->ui->storageUsedBar->setVisible(this->backups->getStorageFolderSizeIsLimited());
     this->ui->maxStorageUsageMiB->setEnabled(this->backups->getStorageFolderSizeIsLimited());
     this->ui->maxStorageUsageMiB->setText(QString::number(this->backups->getMaximumStorageFolderSize()));
     this->ui->storageUsage->setHidden(this->backups->getStorageFolderSizeIsLimited());
@@ -276,7 +276,7 @@ void MainWindow::setupUi()
     connect(this->ui->doRegularBackups,&QCheckBox::stateChanged,this->backups,&BackupManager::setEnableTimedBackups);
     connect(this->ui->alwaysBackupOnTime,&QCheckBox::stateChanged,this->backups,&BackupManager::setBackupTimerIgnoresOtherEvents);
     connect(this->ui->tabWidget,&QTabWidget::currentChanged,this,[=](int idx) {
-       if (idx==2) { // Options page
+       if (idx==1) { // Options page
            this->setupBackupStorageUsedLabel();
        }
     });
