@@ -74,8 +74,10 @@ BedrockServer::BedrockServer(QObject *parent) : QObject(parent),restartAfterStop
             this->shutdownPendingTimer.start(60000);
         } else if (ms>30000) {
             this->shutdownPendingTimer.start(30000);
-        } else {
+        } else if (ms>1000) {
             this->shutdownPendingTimer.start(10000);
+        } else {
+            this->shutdownPendingTimer.stop();
         }
     });
 
