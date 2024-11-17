@@ -71,6 +71,29 @@ To restore a backup:
 
 **You must not copy the `worlds` folder over an existing `worlds` folder as this does not seem to work correctly.**
 
+## Build notes
+
+Once built, create deployment:
+
+```
+mkdir bedrock_deploy
+cd bedrock_deploy
+mkdir files
+copy <build_output_folder>\BedrockConsole.exe files
+\qt\qt-x64-6.8.0\bin\windeployqt.exe --qtpaths d:\qt\qt-x64-6.8.0\bin\qmake.exe --release --dir d:\qt\bedrock_deploy\files --no-qml files\BedrockConsole.exe
+```
+
+Then build the installer:
+
+```
+set MCBC_SRC=<src_folder>
+set MCBC_DIST=<bedrock_deploy_folder>\files
+"c:\Program Files (x86)\NSIS\makensis.exe" <src_folder>\install\installer.nsi "/XOutFile MCBedrockConsoleInstaller_<version_number>.exe"
+```
+
+
+
+
 
 ## Versions
 
@@ -84,3 +107,8 @@ The first version
 * Fixed backups where some files didn't exist
 * Added restart option and timer.
 * Added server properties maintenance.
+
+#### 202411171416
+
+* Fixed repeated 'Restarting' message.
+* Moved backup storage status to main tab.
