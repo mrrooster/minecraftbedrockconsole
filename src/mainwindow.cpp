@@ -157,17 +157,17 @@ void MainWindow::handleServerStateChange(BedrockServer::ServerState newState)
     bool running=false;
     bool startable = false;
     if (newState==BedrockServer::ServerStopped || newState==BedrockServer::ServerNotRunning) {
-        this->ui->serverState->setStyleSheet("background-color: #ff9797;"); // Reddish
+        this->ui->serverState->setStyleSheet("background-color: #ff9797; color: black;"); // Reddish
         if (shuttingDown) {
             this->close();
         }
         startable = true;
     } else if (newState==BedrockServer::ServerLoading || newState==BedrockServer::ServerRestarting) {
-        this->ui->serverState->setStyleSheet("background-color: #ffddb5;"); // Orangy
+        this->ui->serverState->setStyleSheet("background-color: #ffddb5; color: black;"); // Orangy
     } else if (newState==BedrockServer::ServerStartup || newState==BedrockServer::ServerShutdown) {
-        this->ui->serverState->setStyleSheet("background-color: #fffdb5;"); // Yellowy
+        this->ui->serverState->setStyleSheet("background-color: #fffdb5; color: black;"); // Yellowy
     } else if (newState==BedrockServer::ServerRunning) {
-        this->ui->serverState->setStyleSheet("background-color: #ddffdd;"); // Green
+        this->ui->serverState->setStyleSheet("background-color: #ddffdd; color: black;"); // Green
         running=true;
         setupServerProperties();
     }
